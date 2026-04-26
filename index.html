@@ -1,0 +1,1974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-visual">
+<title>Math Feedback Tool</title>
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAARZJREFUWEftlr0KAUEUhe+VVkpqjUaj0Wg0Go1Go/EHGv4qNBrxE4U8gleQKOTJaJWCloKEbM1FsmE3u7I3XzWZuefMd+69M7NRGI0U8OoFMICeAtUKtH4A3gKJjBAQl4C8APBKADMHUK8AM0C4AXBeNxKANwHkq4A3ElAlAjMAjgYQOgjgTwDpCeCv2gjAfQCsf/HM0/Crgw/KAwHr7P7vSAsgnADBfwDMJWDs+hswBnTrgEEHcBFA3np5nPgaUAWIHFZHAYxpAV7Yqx5gOQG4TsSRBoAfALYCYCPACooAYAI44t54lHrgLL8iwV+YFICQHdBpICgBMgnopwE9AVgHkgzkSADb4QNcmwDsM9fDoII0Z57xjKf5UNs9FcNRzhREdgAAAABJRU5ErkJggg==">
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+    :root {
+        --bg: #f1f5f9;
+        --panel: #ffffff;
+        --text: #1e293b;
+        --muted: #64748b;
+        --line: #e2e8f0;
+        --blue: #2563eb;
+        --blue-hover: #1d4ed8;
+        --card: #f8fafc;
+        --green: #10b981;
+        --yellow: #f59e0b;
+        --red: #ef4444;
+        --app-width: 1440px;
+    }
+    * { box-sizing: border-box; }
+    html { overscroll-behavior: none; }
+    body {
+        margin: 0; padding: 0;
+        font-family: 'Inter', -apple-system, sans-serif;
+        background: var(--bg); color: var(--text);
+        overscroll-behavior: none;
+    }
+    .app-header {
+        max-width: var(--app-width); margin: 0 auto;
+        padding: 20px 24px 0;
+        display: flex; align-items: flex-start; justify-content: space-between;
+    }
+    .app-header h1 { margin: 0; font-size: 22px; font-weight: 700; }
+    .app-header .subtitle { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .settings-gear-btn {
+        background: none; border: none; font-size: 24px; cursor: pointer;
+        color: var(--muted); padding: 4px 8px; border-radius: 6px;
+    }
+    .settings-gear-btn:hover { background: #e2e8f0; }
+    .app-inner { max-width: var(--app-width); margin: 0 auto; padding: 0 24px 40px; }
+
+    /* TABS */
+    .tabs { display: flex; gap: 4px; margin: 16px 0 0; }
+    .nav-tab {
+        padding: 8px 20px; border: none; border-radius: 8px 8px 0 0;
+        background: transparent; color: var(--muted); font-size: 14px; font-weight: 500; cursor: pointer;
+    }
+    .nav-tab.active { background: var(--panel); color: var(--blue); font-weight: 600; }
+
+    /* ADMIN PANEL */
+    .admin-panel { display: none; background: var(--panel); border-radius: 0 12px 12px 12px; padding: 24px; margin-bottom: 24px; }
+    .admin-panel.active { display: block; }
+    .admin-panel h2 { margin: 0 0 8px; font-size: 18px; }
+    .student-count { font-size: 13px; color: var(--muted); font-weight: 400; }
+    .google-auth-bar { display: flex; align-items: center; gap: 12px; margin: 16px 0; padding: 12px; background: var(--card); border-radius: 8px; flex-wrap: wrap; }
+    .btn-google-signin, .btn-google-signout {
+        padding: 8px 16px; border-radius: 6px; border: 1px solid #d1d5db;
+        background: white; cursor: pointer; font-size: 13px; font-weight: 500;
+        display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-google-signout { color: var(--red); border-color: #fecaca; }
+    .auth-status { font-size: 13px; }
+    .drive-sync-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+    .drive-sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; }
+    .drive-sync-dot.synced { background: var(--green); }
+    .drive-sync-dot.syncing { background: var(--yellow); animation: pulse 1s infinite; }
+    .drive-sync-dot.error { background: var(--red); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .student-input-group { display: flex; gap: 8px; margin: 16px 0; }
+    .student-input-group input { flex: 1; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 14px; }
+    .student-list { list-style: none; padding: 0; margin: 8px 0; }
+    .student-list li { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .student-list li button { background: none; border: none; color: var(--red); cursor: pointer; font-size: 18px; }
+    .roster-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .roster-toggle-btn { margin: 8px 0 0; }
+
+    /* BUTTONS */
+    .primary-btn { padding: 10px 24px; background: var(--blue); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .primary-btn:hover { background: var(--blue-hover); }
+    .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .secondary-btn { padding: 8px 16px; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 6px; font-size: 13px; cursor: pointer; }
+    .secondary-btn:hover { background: #e2e8f0; }
+    .stop-btn { padding: 8px 16px; background: #fef2f2; color: var(--red); border: 1px solid #fecaca; border-radius: 6px; font-size: 13px; cursor: pointer; }
+    .nb-preview-print-btn {
+        margin-top: 12px; width: 100%;
+        background: #2a8a57; color: white;
+        border: none; border-radius: 7px; padding: 9px 16px;
+        font-size: 13px; font-weight: 600; cursor: pointer;
+        font-family: inherit;
+    }
+    .nb-preview-print-btn:hover { background: #227247; }
+
+    /* TWO-COLUMN LAYOUT */
+    .tool-shell { display: none; }
+    .tool-shell.active { display: block; }
+    .two-col-layout { display: grid; grid-template-columns: 480px 1fr; gap: 0; background: var(--panel); border-radius: 12px; overflow: hidden; min-height: 600px; }
+    .left-col { padding: 24px; border-right: 1px solid var(--line); overflow-y: auto; max-height: calc(100vh - 200px); }
+    .right-col { padding: 24px; overflow-y: auto; max-height: calc(100vh - 200px); background: #fafbfc; }
+
+    /* LEFT COLUMN COMPONENTS */
+    .step-header { margin-bottom: 20px; }
+    .step-kicker { font-size: 11px; text-transform: uppercase; color: var(--blue); font-weight: 600; letter-spacing: 0.5px; }
+    .step-title { font-size: 18px; font-weight: 700; margin: 4px 0 0; }
+    .step-help { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
+    .student-selector { margin-bottom: 20px; }
+    .student-selector label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: var(--muted); }
+    .student-selector select { width: 100%; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 14px; }
+    .helper-text { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .helper-text a { color: var(--blue); }
+
+    /* PHOTO UPLOAD */
+    .photo-upload-zone {
+        border: 2px dashed #d1d5db; border-radius: 12px; padding: 40px 20px;
+        text-align: center; cursor: pointer; transition: border-color 0.2s; margin-bottom: 16px;
+    }
+    .photo-upload-zone:hover, .photo-upload-zone.drag-over { border-color: var(--blue); background: #eff6ff; }
+    .photo-upload-zone .icon { font-size: 40px; margin-bottom: 8px; }
+    .photo-upload-zone .text { font-size: 14px; color: var(--muted); }
+    .photo-upload-zone .subtext { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+    .photo-preview-wrap { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .photo-preview-card {
+        position: relative; width: 120px; border-radius: 8px;
+        overflow: hidden; border: 1px solid var(--line); background: var(--card);
+    }
+    .photo-preview-card.primary { border-color: var(--blue); border-width: 2px; }
+    .photo-preview-card img { width: 100%; height: 100px; object-fit: cover; display: block; }
+    .photo-preview-actions {
+        display: flex; flex-wrap: wrap; gap: 2px; padding: 4px;
+    }
+    .photo-preview-actions button {
+        flex: 1; font-size: 10px; padding: 4px 6px; border: 1px solid var(--line);
+        border-radius: 4px; background: white; cursor: pointer; font-family: inherit;
+        min-width: 0; white-space: nowrap;
+    }
+    .photo-preview-actions button:hover { background: #e2e8f0; }
+    .photo-preview-actions button:disabled { opacity: 0.4; cursor: default; }
+    .photo-preview-remove {
+        position: absolute; top: 4px; right: 4px; width: 22px; height: 22px;
+        border-radius: 50%; background: rgba(0,0,0,0.6); color: white; border: none;
+        cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
+        z-index: 2;
+    }
+    .photo-count { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+
+    /* QUESTION CONFIG */
+    .config-section { margin-bottom: 20px; }
+    .config-section h3 { font-size: 14px; font-weight: 600; margin: 0 0 8px; }
+    .config-section .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .config-check { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+    .config-check input { cursor: pointer; }
+    .category-weights { font-size: 12px; color: var(--muted); margin-top: 8px; padding: 8px; background: var(--card); border-radius: 6px; }
+    .category-weights span { font-weight: 600; color: var(--text); }
+
+    /* QUESTION LIST */
+    .question-list { margin-bottom: 20px; }
+    .question-item {
+        display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+        border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; font-size: 13px;
+    }
+    .question-num { font-weight: 700; color: var(--blue); min-width: 24px; }
+    .question-text { flex: 1; }
+    .question-complexity {
+        font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 600;
+    }
+    .complexity-1 { background: #d1fae5; color: #065f46; }
+    .complexity-2 { background: #a7f3d0; color: #065f46; }
+    .complexity-3 { background: #fef3c7; color: #92400e; }
+    .complexity-4 { background: #fed7aa; color: #9a3412; }
+    .complexity-5 { background: #fecaca; color: #991b1b; }
+
+    /* SCORE STRIP & RUBRIC CARDS */
+    .section-title {
+        font-size: 18px; font-weight: 700; margin: 24px 0 12px; color: var(--text);
+    }
+    .score-strip {
+        display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
+    }
+    .score-box {
+        background: var(--card); border: 1px solid var(--line);
+        border-radius: 12px; padding: 22px;
+    }
+    .score-number { font-size: 50px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
+    .score-label { color: var(--muted); text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; }
+    .score-note { color: #475569; margin-top: 8px; font-size: 13px; }
+    .cards {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px; margin: 0 0 20px;
+    }
+    .rubric-card {
+        background: var(--card); border: 1px solid var(--line);
+        border-radius: 12px; padding: 14px;
+        display: flex; flex-direction: column;
+        min-height: 130px;
+    }
+    .rubric-card > div:last-child {
+        color: #334155; line-height: 1.5; font-size: 13px;
+    }
+    .pill {
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 10px; padding: 8px 10px; border-radius: 10px;
+        background: #edf4ff; border: 1px solid #c7d7ea;
+        color: var(--text); font-weight: 600; margin-bottom: 10px;
+        font-size: 14px; line-height: 1.2;
+    }
+    .pill span:first-child { color: #1e40af; }
+    .pill-score {
+        flex: 0 0 auto; padding: 3px 9px; border-radius: 999px;
+        background: #dbe8f8; color: #1e3a5f; font-size: 13px;
+    }
+    .pill-score.score-10, .pill-score.score-9 { background: #d1fae5; color: #065f46; }
+    .pill-score.score-8, .pill-score.score-7 { background: #dbeafe; color: #1e40af; }
+    .pill-score.score-6, .pill-score.score-5 { background: #fef3c7; color: #92400e; }
+    .pill-score.score-4 { background: #fecaca; color: #991b1b; }
+    .pill-score.score-missing { background: #f1f5f9; color: #64748b; font-style: italic; }
+
+    /* CORRECTED MATH */
+    .corrected-math {
+        background: var(--card); border: 1px solid var(--line);
+        border-radius: 12px; padding: 18px; margin-top: 16px;
+    }
+    .corrected-math .section-title { margin-top: 0; }
+    .corrected-math-content {
+        font-size: 14px; line-height: 1.8; color: var(--text);
+        white-space: pre-wrap;
+    }
+    .corrected-math-content .step-line { display: block; margin-bottom: 4px; }
+    .corrected-math-content .answer-line { font-weight: 700; color: var(--green); }
+
+    /* REPORT CARD */
+    .report-card {}
+    .report-card h2 { margin: 0 0 4px; font-size: 18px; }
+    .report-card .student-name { font-size: 15px; color: var(--muted); margin-bottom: 20px; }
+    .feedback-section { margin-top: 20px; }
+    .feedback-section h3 { font-size: 15px; margin: 0 0 8px; }
+    .feedback-item { padding: 8px 12px; margin-bottom: 6px; background: var(--card); border-radius: 6px; font-size: 13px; border-left: 3px solid var(--blue); }
+    .feedback-item.warning { border-left-color: var(--yellow); }
+    .feedback-item.good { border-left-color: var(--green); }
+    .per-question { margin-top: 16px; }
+    .per-question h3 { font-size: 15px; margin: 0 0 8px; }
+    .pq-item { padding: 10px 12px; margin-bottom: 6px; background: var(--card); border-radius: 6px; font-size: 13px; }
+    .pq-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .pq-score { font-weight: 700; }
+    .pq-feedback { color: var(--muted); font-size: 12px; }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .result-actions-wrap { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+    /* SETTINGS DRAWER */
+    .settings-drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 100; }
+    .settings-drawer-overlay.open { display: block; }
+    .settings-drawer {
+        position: fixed; top: 0; right: 0; width: 400px; height: 100vh;
+        background: var(--panel); z-index: 101; box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+        display: flex; flex-direction: column; transform: translateX(100%);
+        transition: transform 0.25s ease;
+    }
+    .settings-drawer.open { transform: translateX(0); }
+    .settings-drawer-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--line); }
+    .settings-drawer-header h3 { margin: 0; font-size: 16px; }
+    .settings-drawer-close { background: none; border: none; font-size: 14px; cursor: pointer; color: var(--muted); }
+    .settings-drawer-body { padding: 24px; overflow-y: auto; flex: 1; }
+    .settings-section { margin-bottom: 24px; }
+    .settings-section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+    .settings-section label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+    .settings-section input[type="text"],
+    .settings-section input[type="password"],
+    .settings-section select,
+    .settings-section input[type="number"] {
+        width: 100%; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; margin-bottom: 8px;
+    }
+    .settings-help-text { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; }
+    .settings-inline-btn { margin-bottom: 12px; }
+
+    /* PORTFOLIO */
+    .portfolio-student-selector { margin-bottom: 16px; }
+    .portfolio-student-selector select { width: 100%; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 14px; }
+    .portfolio-empty { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+    .portfolio-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat-card { padding: 16px; background: var(--card); border-radius: 8px; text-align: center; }
+    .stat-value { font-size: 28px; font-weight: 700; }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .stat-trend { font-size: 12px; margin-top: 4px; }
+    .trend-up { color: var(--green); }
+    .trend-down { color: var(--red); }
+    .trend-flat { color: var(--muted); }
+    .chart-wrap { margin-bottom: 20px; }
+    .session-list { list-style: none; padding: 0; }
+    .session-item { padding: 12px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; cursor: pointer; }
+    .session-item:hover { background: var(--card); }
+    .session-date { font-weight: 600; font-size: 14px; }
+    .session-score { font-size: 13px; color: var(--muted); }
+
+    /* LOADING */
+    .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.8); z-index: 200; justify-content: center; align-items: center; flex-direction: column; }
+    .loading-overlay.active { display: flex; }
+    .spinner { width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .loading-text { margin-top: 12px; font-size: 14px; color: var(--muted); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .grade-action { display: flex; gap: 8px; margin-top: 16px; }
+    #totalMaxPoints { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    /* NOTEBOOK PRINT AREA */
+    .notebook-print-area { display: none; }
+    .notebook-print-doc .page {
+        width: 148mm; min-height: 210mm; background: #ffffff;
+        margin: 8mm auto; padding: 8mm 9mm 9mm;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.18); page-break-after: always;
+        font-family: 'Inter', 'Helvetica Neue', sans-serif;
+        font-size: 12.4px; color: #111111; line-height: 1.4;
+    }
+    .notebook-print-doc .page:last-child { page-break-after: auto; }
+    .notebook-print-doc .page-header {
+        display: flex; justify-content: space-between; align-items: flex-end;
+        border-bottom: 2px solid #333333; padding-bottom: 4px; margin-bottom: 5px;
+    }
+    .notebook-print-doc .page-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: #444444; margin-bottom: 2px; }
+    .notebook-print-doc .page-title { font-size: 18.5px; font-weight: 700; color: #111111; line-height: 1.1; }
+    .notebook-print-doc .overall-score { text-align: right; flex-shrink: 0; margin-left: 8px; }
+    .notebook-print-doc .overall-label { font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: #444444; margin-bottom: 1px; }
+    .notebook-print-doc .overall-value { font-size: 26.5px; font-weight: 700; color: #111111; line-height: 1; }
+    .notebook-print-doc .meta-row {
+        display: flex; gap: 14px; font-size: 10.3px; color: #444444;
+        padding: 3px 0 4px; border-bottom: 1px solid #cccccc; margin-bottom: 5px;
+    }
+    .notebook-print-doc .meta-row strong { color: #111111; font-weight: 600; }
+    .notebook-print-doc .top-boxes {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 5px;
+    }
+    .notebook-print-doc .info-box {
+        background: #f5f5f5; border: 1px solid #cccccc;
+        border-radius: 4px; padding: 4px 5px;
+    }
+    .notebook-print-doc .box-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #444444; margin-bottom: 2px; }
+    .notebook-print-doc .info-box p { font-size: 9.9px; color: #111111; line-height: 1.45; }
+    .notebook-print-doc .teacher-comment {
+        background: #f5f5f5; border: 1px solid #cccccc;
+        border-left: 3px solid #333333; border-radius: 4px;
+        padding: 4px 5px; margin-bottom: 6px;
+    }
+    .notebook-print-doc .teacher-comment p { font-size: 9.9px; color: #111111; line-height: 1.5; }
+    .notebook-print-doc .section-title {
+        font-size: 9px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.09em; color: #444444;
+        border-bottom: 1px solid #888888; padding-bottom: 2px; margin-bottom: 5px; margin-top: 0;
+    }
+    .notebook-print-doc .assessment-grid {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 4px 6px;
+    }
+    .notebook-print-doc .category {
+        border: 1px solid #cccccc; border-radius: 3px;
+        padding: 4px 5px; background: #ffffff;
+    }
+    .notebook-print-doc .category-header {
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;
+    }
+    .notebook-print-doc .category-name { font-weight: 700; font-size: 10.3px; color: #111111; }
+    .notebook-print-doc .score-badge {
+        font-size: 9.3px; font-weight: 700; background: #ececec;
+        border: 1px solid #888888; border-radius: 99px;
+        padding: 0px 5px; white-space: nowrap; color: #111111;
+    }
+    .notebook-print-doc .score-bar-track { height: 3.5px; background: #cccccc; border-radius: 99px; margin-bottom: 4px; overflow: hidden; }
+    .notebook-print-doc .score-bar-fill { height: 100%; border-radius: 99px; background: #333333; }
+    .notebook-print-doc .evidence-block { font-size: 9.3px; color: #111111; line-height: 1.45; margin-bottom: 3px; }
+    .notebook-print-doc .page2-header {
+        display: flex; justify-content: space-between; align-items: flex-end;
+        border-bottom: 2px solid #333333; padding-bottom: 4px; margin-bottom: 8mm;
+    }
+    .notebook-print-doc .page2-meta { font-size: 8px; color: #444444; margin-bottom: 2px; }
+    .notebook-print-doc .page2-title { font-size: 14px; font-weight: 700; }
+    .notebook-print-doc .page2-date { font-size: 8.5px; color: #444444; text-align: right; }
+    .notebook-print-doc .corrected-math-print {
+        border: 1px solid #cccccc; border-radius: 4px; padding: 6mm 7mm;
+    }
+    .notebook-print-doc .corrected-math-print .section-title { margin-bottom: 5mm; }
+    .notebook-print-doc .corrected-math-content-print {
+        font-size: 10px; color: #111111; line-height: 1.85; white-space: pre-wrap;
+    }
+    @media print {
+        .notebook-print-doc .page { margin: 0; box-shadow: none; width: 148mm; min-height: 210mm; }
+    }
+
+    /* CROP MODAL */
+    #cropModal {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+        z-index: 300; justify-content: center; align-items: center; flex-direction: column;
+    }
+    #cropModal.open { display: flex; }
+    #cropModalCard {
+        background: var(--panel); border-radius: 12px; padding: 24px;
+        max-width: 700px; width: 95%; max-height: 90vh; overflow-y: auto;
+    }
+    #cropModalCard p { margin: 0 0 12px; font-size: 14px; }
+    #cropCanvasWrap { position: relative; margin-bottom: 8px; }
+    #cropCanvas { display: block; width: 100%; }
+    #cropOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; }
+    #cropModalActions { display: flex; gap: 8px; justify-content: flex-end; }
+    #cropModalActions button {
+        padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: inherit;
+        border: 1px solid var(--line);
+    }
+    #cropApplyBtn { background: var(--blue); color: white; border-color: var(--blue) !important; }
+    #cropApplyBtn:hover { background: var(--blue-hover); }
+    #cropResetBtn, #cropCancelBtn { background: var(--card); }
+    #cropResetBtn:hover, #cropCancelBtn:hover { background: #e2e8f0; }
+
+    /* MOBILE */
+    @media (max-width: 900px) {
+        .two-col-layout { grid-template-columns: 1fr; }
+        .left-col { border-right: none; border-bottom: 1px solid var(--line); max-height: none; }
+        .right-col { max-height: none; }
+        .settings-drawer { width: 100%; }
+        .config-grid { grid-template-columns: 1fr; }
+        .cards { grid-template-columns: 1fr; }
+    }
+</style>
+</head>
+<body>
+
+<!-- APP HEADER -->
+<div class="app-header">
+    <div>
+        <h1>&#10133; Math Feedback Tool</h1>
+        <div class="subtitle">AI-powered 5th grade math worksheet grading with automatic question detection, complexity scoring, and partial credit.</div>
+    </div>
+    <button type="button" class="settings-gear-btn" onclick="openSettingsDrawer()" title="Settings">&#9881;</button>
+</div>
+
+<div class="app-inner">
+    <!-- TABS -->
+    <div class="tabs">
+        <button type="button" class="nav-tab active" id="toolTabBtn" onclick="switchTab('tool')">Grading Tool</button>
+        <button type="button" class="nav-tab" id="adminTabBtn" onclick="switchTab('admin')">Teacher Admin</button>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div class="admin-panel" id="adminPanel">
+        <h2>Teacher Admin <span class="student-count" id="studentCount">0 students</span></h2>
+        <p style="font-size:13px;color:var(--muted);">Add and manage your class roster. Student names appear in the grading tool dropdown.</p>
+        <div class="google-auth-bar" id="googleAuthBar">
+            <div id="googleSignInBtn">
+                <button type="button" class="btn-google-signin" onclick="handleGoogleSignIn()">
+                    <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+                    Sign in with Google
+                </button>
+            </div>
+            <div id="googleUserInfo" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;">
+                <img id="googleUserAvatar" src="" width="32" height="32" style="border-radius:50%;display:none;" onerror="this.style.display='none'">
+                <div class="auth-status">Signed in as <strong id="googleUserName"></strong></div>
+                <div class="drive-sync-status">
+                    <span class="drive-sync-dot" id="driveSyncDot"></span>
+                    <span id="driveSyncText">Not synced</span>
+                </div>
+                <button type="button" class="btn-google-signout" onclick="handleGoogleSignOut()">Sign Out</button>
+            </div>
+        </div>
+        <button type="button" class="secondary-btn roster-toggle-btn" id="toggleRosterBtn" onclick="toggleRosterVisibility()">&#127891; Show Class Roster</button>
+        <div id="rosterSection" style="display:none;">
+            <div class="student-input-group">
+                <input type="text" id="studentNameInput" placeholder="Enter student name (e.g., Emma Johnson)" onkeypress="if(event.key==='Enter')addStudent()">
+                <button type="button" class="primary-btn" onclick="addStudent()">Add Student</button>
+            </div>
+            <ul class="student-list" id="studentList"></ul>
+            <div class="roster-controls">
+                <button type="button" class="secondary-btn" onclick="exportStudents()">Export List</button>
+                <button type="button" class="secondary-btn" onclick="document.getElementById('importFile').click()">Import List</button>
+                <input type="file" id="importFile" accept=".txt,.csv" style="display:none;" onchange="importStudents(event)">
+                <button type="button" class="secondary-btn" onclick="manualSaveToDrive()">Sync to Drive</button>
+                <button type="button" class="stop-btn" onclick="clearAllStudents()">Clear All</button>
+            </div>
+        </div>
+        <div class="student-portfolio-section" id="portfolioSection">
+            <h3 style="font-size:16px;margin-top:24px;">&#128200; Student Progress &amp; Portfolio</h3>
+            <div class="portfolio-student-selector">
+                <select id="portfolioStudentSelect" onchange="renderStudentPortfolio()">
+                    <option value="">-- Select a student to view progress --</option>
+                </select>
+            </div>
+            <div id="portfolioContent">
+                <div class="portfolio-empty">Select a student above to view their progress charts and session history.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOOL SHELL -->
+    <div id="toolShell" class="tool-shell active">
+        <div class="two-col-layout">
+            <!-- LEFT COLUMN -->
+            <div class="left-col">
+                <div class="step-header">
+                    <div class="step-kicker">Step 1</div>
+                    <h2 class="step-title">Upload math worksheet</h2>
+                    <p class="step-help">Upload a photo of the completed worksheet, then configure and grade.</p>
+                </div>
+                <div class="student-selector">
+                    <label for="studentSelect">Select Student</label>
+                    <select id="studentSelect" onchange="updateSelectedStudent()">
+                        <option value="">-- Choose a student --</option>
+                    </select>
+                    <p class="helper-text">Add students in <a href="#" onclick="switchTab('admin');return false;">Teacher Admin</a>.</p>
+                </div>
+                <!-- PHOTO UPLOAD -->
+                <div class="photo-upload-zone" id="photoUploadZone" onclick="document.getElementById('photoInput').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handlePhotoDrop(event)">
+                    <div class="icon">&#128247;</div>
+                    <div class="text">Tap or drag to upload worksheet photos</div>
+                    <div class="subtext">JPG, PNG, HEIC supported &middot; Rearrange and crop after upload</div>
+                </div>
+                <input type="file" id="photoInput" accept="image/*" capture="environment" multiple style="display:none;" onchange="handlePhotoSelect(event)">
+                <div class="photo-preview-wrap" id="photoPreviewWrap"></div>
+                <div class="photo-count" id="photoCount"></div>
+
+                <!-- QUESTION TYPE CONFIG -->
+                <div class="config-section" id="questionConfig" style="display:none;">
+                    <h3>Step 2: Question Types</h3>
+                    <p class="step-help" style="margin-bottom:8px;">Select which types are present. Weights auto-adjust.</p>
+                    <div class="config-grid">
+                        <label class="config-check"><input type="checkbox" id="qTypeComputation" checked onchange="updateCategoryWeights()"> Computation</label>
+                        <label class="config-check"><input type="checkbox" id="qTypeWordProblems" checked onchange="updateCategoryWeights()"> Word Problems</label>
+                        <label class="config-check"><input type="checkbox" id="qTypeVocabulary" onchange="updateCategoryWeights()"> Vocabulary</label>
+                        <label class="config-check"><input type="checkbox" id="qTypeExplanations" onchange="updateCategoryWeights()"> Explanations</label>
+                    </div>
+                    <div class="category-weights" id="categoryWeightsDisplay"></div>
+                </div>
+
+                <!-- DETECTED QUESTIONS -->
+                <div class="question-list" id="questionList" style="display:none;">
+                    <h3 style="font-size:14px;margin:0 0 8px;">Detected Questions</h3>
+                    <div id="questionListInner"></div>
+                    <div id="totalMaxPoints" style="margin-top:4px;"></div>
+                </div>
+
+                <!-- GRADE BUTTON -->
+                <div class="grade-action">
+                    <button type="button" class="primary-btn" id="gradeBtn" onclick="runGrading()" disabled>
+                        &#128269; Detect Questions
+                    </button>
+                    <button type="button" class="secondary-btn" id="resetBtn" onclick="resetTool()" style="display:none;">Reset</button>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: REPORT CARD -->
+            <div class="right-col" id="reportCardCol">
+                <div class="empty-state" id="reportEmpty">
+                    <div class="icon">&#128203;</div>
+                    <p>Upload a worksheet and click "Detect Questions" to get started.</p>
+                </div>
+                <div class="report-card" id="reportCard" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTEBOOK PRINT AREA -->
+    <div id="notebookPrintArea" class="notebook-print-area" aria-hidden="true">
+        <div id="notebookPrintDocument" class="notebook-print-doc">
+            <div class="page page-1">
+                <div class="page-header">
+                    <div>
+                        <div class="page-label">Math Notebook Summary</div>
+                        <div id="notebookTitle" class="page-title">Fractions Quiz</div>
+                    </div>
+                    <div class="overall-score">
+                        <div class="overall-label">Overall</div>
+                        <div id="notebookOverallScore" class="overall-value">--%</div>
+                    </div>
+                </div>
+                <div class="meta-row">
+                    <span><strong>Student:</strong> <span id="notebookStudentName">No student selected</span></span>
+                    <span><strong>Date:</strong> <span id="notebookDate"></span></span>
+                    <span><strong>Topic:</strong> <span id="notebookTopic">-</span></span>
+                </div>
+                <div class="top-boxes">
+                    <div class="info-box">
+                        <div class="box-label">My Strength</div>
+                        <p id="notebookStrength">-</p>
+                    </div>
+                    <div class="info-box">
+                        <div class="box-label">My Grow Goal</div>
+                        <p id="notebookGrowGoal">-</p>
+                    </div>
+                </div>
+                <div class="teacher-comment">
+                    <div class="box-label">Teacher Comment</div>
+                    <p id="notebookTeacherComment">-</p>
+                </div>
+                <div class="section-title">Detailed Math Assessment</div>
+                <div id="notebookDetailedAssessment" class="assessment-grid"></div>
+            </div>
+            <div class="page" id="notebookPage2">
+                <div class="page2-header">
+                    <div>
+                        <div class="page2-meta">Math Notebook Summary - Page 2</div>
+                        <div id="notebookPage2Title" class="page2-title">Fractions Quiz</div>
+                    </div>
+                    <div id="notebookPage2Date" class="page2-date"></div>
+                </div>
+                <div class="corrected-math-print">
+                    <div class="section-title">Corrected Math</div>
+                    <div id="notebookCorrectedMath" class="corrected-math-content-print">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SETTINGS DRAWER -->
+<div class="settings-drawer-overlay" id="settingsDrawerOverlay" onclick="closeSettingsDrawer()"></div>
+<div class="settings-drawer" id="settingsDrawer">
+    <div class="settings-drawer-header">
+        <h3>&#9881; Settings</h3>
+        <button type="button" class="settings-drawer-close" onclick="closeSettingsDrawer()">Close</button>
+    </div>
+    <div class="settings-drawer-body">
+        <div class="settings-section">
+            <div class="settings-section-title">AI &amp; Authentication</div>
+            <label for="apiKeyInput">OpenRouter API Key</label>
+            <input id="apiKeyInput" type="password" placeholder="Paste your OpenRouter API key here" autocomplete="off">
+            <button type="button" class="secondary-btn settings-inline-btn" id="toggleApiKeyBtn" onclick="toggleApiKeyVisibility()">Show API Key</button>
+            <div class="settings-help-text">Saved in this browser only — each teacher uses their own key.</div>
+            <label for="googleClientIdInput">Google OAuth Client ID</label>
+            <input id="googleClientIdInput" type="text" placeholder="Paste your Google OAuth Client ID" autocomplete="off">
+            <div class="settings-help-text">From Google Cloud Console > APIs & Services > Credentials > OAuth 2.0 Client IDs (Web application).</div>
+            <label for="modelSelect">AI Model</label>
+            <select id="modelSelect">
+                <option value="google/gemini-3.1-flash-lite-preview" selected>google/gemini-3.1-flash-lite-preview (default)</option>
+                <option value="google/gemini-2.5-flash">google/gemini-2.5-flash</option>
+                <option value="anthropic/claude-3.5-haiku">anthropic/claude-3.5-haiku</option>
+            </select>
+        </div>
+        <div class="settings-section">
+            <div class="settings-section-title">Print Options</div>
+            <div class="checkbox-row">
+                <input id="includeCorrectedMath" type="checkbox" checked>
+                <label for="includeCorrectedMath">Include Corrected Math (Pg 2) in Notebook print</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Analyzing worksheet...</div>
+</div>
+
+<!-- CROP MODAL -->
+<div id="cropModal" role="dialog" aria-modal="true" aria-label="Crop image">
+    <div id="cropModalCard">
+        <p id="cropModalTitle">Crop Image — drag to select the area to keep</p>
+        <div id="cropCanvasWrap">
+            <canvas id="cropCanvas"></canvas>
+            <canvas id="cropOverlay"></canvas>
+        </div>
+        <p id="cropHint" style="font-size:12px;color:var(--muted);">Click and drag on the image to draw a crop region. Use Reset to start over.</p>
+        <div id="cropModalActions">
+            <button id="cropResetBtn" type="button">Reset</button>
+            <button id="cropCancelBtn" type="button">Cancel</button>
+            <button id="cropApplyBtn" type="button">Apply Crop</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/* =============================================
+   CONSTANTS & GLOBAL STATE
+============================================= */
+var API_KEY = '';
+var EMBEDDED_API_KEY = '';
+var GOOGLE_CLIENT_ID = '';
+var DRIVE_FOLDER_NAME = 'MathFeedbackTool';
+var GOOGLE_USER_CACHE_KEY = 'mft_google_user';
+var DRIVE_TOKEN_CACHE_KEY = 'mft_drive_access_token';
+var DRIVE_TOKEN_EXPIRY_CACHE_KEY = 'mft_drive_access_token_expiry';
+var GOOGLE_CONNECTED_CACHE_KEY = 'mft_google_connected';
+var googleUser = null;
+var driveAccessToken = null;
+var driveFolderId = null;
+var driveAutoSyncInterval = null;
+var students = [];
+var selectedStudent = '';
+var selectedPhotos = []; // { dataUrl, originalDataUrl, name, mimeType }
+var detectedQuestions = []; // [{ num, text, maxPoints, grade, complexity }]
+var gradingResult = null; // full AI result
+var gradingPhase = null; // 'detect' | 'grade' | null
+var mathTopic = '';
+
+var CATEGORY_KEYS = ['Neatness','Vocabulary','Competencies','Communication','ProblemSolving'];
+var CATEGORY_LABELS = {
+    Neatness: 'Neatness &amp; Thought Process',
+    Vocabulary: 'Mathematical Vocabulary',
+    Competencies: 'Core Math Competencies',
+    Communication: 'Math Communication',
+    ProblemSolving: 'Problem-Solving Skills'
+};
+var CATEGORY_BASE_WEIGHTS = {
+    Neatness: 10,
+    Vocabulary: 10,
+    Competencies: 40,
+    Communication: 10,
+    ProblemSolving: 20
+};
+
+/* =============================================
+   SETTINGS
+============================================= */
+function openSettingsDrawer() {
+    document.getElementById('settingsDrawer').classList.add('open');
+    document.getElementById('settingsDrawerOverlay').classList.add('open');
+}
+function closeSettingsDrawer() {
+    document.getElementById('settingsDrawer').classList.remove('open');
+    document.getElementById('settingsDrawerOverlay').classList.remove('open');
+    saveSettingsToLocalStorage();
+}
+function getApiKey() {
+    return String((document.getElementById('apiKeyInput')||{}).value||'').trim() || getStoredApiKey() || EMBEDDED_API_KEY;
+}
+function getStoredApiKey() {
+    try { var s = JSON.parse(localStorage.getItem('mft_settings')||'{}'); return s&&s.apiKey?String(s.apiKey).trim():''; } catch(e) { return ''; }
+}
+function saveSettingsToLocalStorage() {
+    try {
+        var s = {
+            apiKey: String((document.getElementById('apiKeyInput')||{}).value||'').trim(),
+            googleClientId: String((document.getElementById('googleClientIdInput')||{}).value||'').trim(),
+            model: String((document.getElementById('modelSelect')||{}).value||'')
+        };
+        GOOGLE_CLIENT_ID = s.googleClientId;
+        API_KEY = s.apiKey || getStoredApiKey() || EMBEDDED_API_KEY;
+        localStorage.setItem('mft_settings', JSON.stringify(s));
+    } catch(e) {}
+}
+function loadSettingsFromLocalStorage() {
+    try {
+        var raw = localStorage.getItem('mft_settings');
+        if (raw) {
+            var s = JSON.parse(raw);
+            if (document.getElementById('apiKeyInput')) document.getElementById('apiKeyInput').value = s.apiKey||'';
+            if (document.getElementById('googleClientIdInput')) document.getElementById('googleClientIdInput').value = s.googleClientId||'';
+            GOOGLE_CLIENT_ID = String(s.googleClientId||'').trim();
+            if (s.model && document.getElementById('modelSelect')) document.getElementById('modelSelect').value = s.model;
+        }
+        API_KEY = getApiKey();
+    } catch(e) {}
+}
+function toggleApiKeyVisibility() {
+    var inp = document.getElementById('apiKeyInput');
+    var btn = document.getElementById('toggleApiKeyBtn');
+    if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'Hide API Key'; }
+    else { inp.type = 'password'; btn.textContent = 'Show API Key'; }
+}
+
+/* =============================================
+   GOOGLE AUTH
+============================================= */
+function clearPersistedGoogleState() {
+    [GOOGLE_USER_CACHE_KEY, DRIVE_TOKEN_CACHE_KEY, DRIVE_TOKEN_EXPIRY_CACHE_KEY, GOOGLE_CONNECTED_CACHE_KEY].forEach(function(k) { localStorage.removeItem(k); });
+    googleUser = null; driveAccessToken = null; driveFolderId = null;
+}
+function getCachedGoogleUser() {
+    try { var raw = localStorage.getItem(GOOGLE_USER_CACHE_KEY); return raw ? JSON.parse(raw) : null; } catch(e) { return null; }
+}
+function hasPersistedGoogleConnection() { return localStorage.getItem(GOOGLE_CONNECTED_CACHE_KEY) === 'true'; }
+function checkHashForOAuthTokens() {
+    var hash = window.location.hash;
+    if (!hash || hash.indexOf('access_token') === -1) return;
+    var params = {};
+    hash.substring(1).split('&').forEach(function(p) { var parts = p.split('='); params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]||''); });
+    if (params.access_token) {
+        var expiresIn = parseInt(params.expires_in||'3600',10);
+        driveAccessToken = params.access_token;
+        localStorage.setItem(DRIVE_TOKEN_CACHE_KEY, driveAccessToken);
+        localStorage.setItem(DRIVE_TOKEN_EXPIRY_CACHE_KEY, String(Date.now() + expiresIn*1000));
+        localStorage.setItem(GOOGLE_CONNECTED_CACHE_KEY, 'true');
+        window.location.hash = '';
+        restoreGoogleStateFromStorage();
+    }
+}
+function restoreGoogleStateFromStorage() {
+    var token = localStorage.getItem(DRIVE_TOKEN_CACHE_KEY);
+    var expiry = Number(localStorage.getItem(DRIVE_TOKEN_EXPIRY_CACHE_KEY)||0);
+    if (token && expiry > Date.now()) {
+        driveAccessToken = token;
+        var cachedUser = getCachedGoogleUser();
+        if (cachedUser) {
+            googleUser = cachedUser;
+            showSignedInState(cachedUser);
+            startDriveAutoSync();
+        } else {
+            fetchGoogleUserInfo(token);
+        }
+    } else if (hasPersistedGoogleConnection()) {
+        scheduleGoogleSessionRestore(5, 2000);
+    } else {
+        showSignedOutState();
+    }
+}
+function scheduleGoogleSessionRestore(max, delay) {
+    if (max <= 0) { clearPersistedGoogleState(); showSignedOutState(); return; }
+    setTimeout(function() { requestDriveAccess(function() { scheduleGoogleSessionRestore(max-1, delay); }, {prompt:'none'}); }, delay);
+}
+function requestDriveAccess(onSuccess, options) {
+    var scope = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+    var redirectUri = window.location.origin + window.location.pathname;
+    var authUrl = 'https://accounts.google.com/o/oauth2/auth?client_id=' + encodeURIComponent(GOOGLE_CLIENT_ID) + '&redirect_uri=' + encodeURIComponent(redirectUri) + '&response_type=token&scope=' + encodeURIComponent(scope) + (options&&options.prompt==='none'?'&prompt=none':'');
+    window.location.href = authUrl;
+}
+function handleGoogleSignIn() { requestDriveAccess(); }
+function showSignedOutState() {
+    var signInBtn = document.getElementById('googleSignInBtn');
+    var userInfo = document.getElementById('googleUserInfo');
+    if (signInBtn) signInBtn.style.display = '';
+    if (userInfo) userInfo.style.display = 'none';
+    setDriveSyncStatus('', 'Not synced');
+}
+function showDriveDisconnectedState(msg) {
+    showSignedOutState();
+    var cachedUser = getCachedGoogleUser();
+    if (cachedUser) {
+        var signInBtn = document.getElementById('googleSignInBtn');
+        var userInfo = document.getElementById('googleUserInfo');
+        if (signInBtn) signInBtn.style.display = 'none';
+        if (userInfo) userInfo.style.display = 'flex';
+        var nameEl = document.getElementById('googleUserName');
+        if (nameEl) nameEl.textContent = cachedUser.name||cachedUser.email||'';
+        setDriveSyncStatus('error', msg||'Reconnect needed');
+    }
+}
+function fetchGoogleUserInfo(token) {
+    fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: 'Bearer '+token } })
+        .then(function(r) { return r.json(); })
+        .then(function(info) {
+            if (info.error) { showDriveDisconnectedState(info.error.message); return; }
+            googleUser = info;
+            localStorage.setItem(GOOGLE_USER_CACHE_KEY, JSON.stringify(info));
+            showSignedInState(info);
+            startDriveAutoSync();
+            loadSettingsFromDrive();
+            loadPortfolioFromDrive();
+        })
+        .catch(function() { showDriveDisconnectedState('Failed to fetch user info'); });
+}
+function showSignedInState(info) {
+    var signInBtn = document.getElementById('googleSignInBtn');
+    var userInfo = document.getElementById('googleUserInfo');
+    if (signInBtn) signInBtn.style.display = 'none';
+    if (userInfo) userInfo.style.display = 'flex';
+    var nameEl = document.getElementById('googleUserName');
+    if (nameEl) nameEl.textContent = (info.name||info.email||'').split(' ')[0];
+    var avatar = document.getElementById('googleUserAvatar');
+    if (avatar && info.picture) { avatar.src = info.picture; avatar.style.display = ''; }
+}
+function handleGoogleSignOut() {
+    clearPersistedGoogleState();
+    driveAccessToken = null; googleUser = null; driveFolderId = null;
+    stopDriveAutoSync();
+    showSignedOutState();
+}
+
+/* =============================================
+   GOOGLE DRIVE SYNC
+============================================= */
+function setDriveSyncStatus(state, text) {
+    var dot = document.getElementById('driveSyncDot');
+    var txt = document.getElementById('driveSyncText');
+    if (dot) dot.className = 'drive-sync-dot' + (state?' '+state:'');
+    if (txt) txt.textContent = text||'';
+}
+function ensureDriveFolder(cb) {
+    if (driveFolderId) { cb(driveFolderId); return; }
+    fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27'+encodeURIComponent(DRIVE_FOLDER_NAME)+'%27+and+mimeType%3D%27application%2Fvnd.google-apps.folder%27+and+trashed%3Dfalse&fields=files(id,name)', {
+        headers: { Authorization: 'Bearer '+driveAccessToken }
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.files && d.files.length) { driveFolderId = d.files[0].id; cb(driveFolderId); }
+        else {
+            fetch('https://www.googleapis.com/drive/v3/files', {
+                method: 'POST', headers: { Authorization: 'Bearer '+driveAccessToken, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: DRIVE_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+            }).then(function(r) { return r.json(); }).then(function(f) { driveFolderId = f.id; cb(driveFolderId); });
+        }
+    }).catch(function(e) { console.error('Drive folder error:', e); setDriveSyncStatus('error','Sync error'); });
+}
+function saveFileToDrive(filename, content, mimeType, cb) {
+    if (!driveAccessToken) return;
+    setDriveSyncStatus('syncing','Syncing...');
+    ensureDriveFolder(function(folderId) {
+        fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27'+encodeURIComponent(filename)+'%27+and+%27'+folderId+'%27+in+parents+and+trashed%3Dfalse&fields=files(id)', {
+            headers: { Authorization: 'Bearer '+driveAccessToken }
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            var existing = d.files&&d.files.length?d.files[0].id:null;
+            var url, method;
+            if (existing) { url = 'https://www.googleapis.com/upload/drive/v3/files/'+existing+'?uploadType=multipart'; method = 'PATCH'; }
+            else { url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'; method = 'POST'; }
+            var boundary = '----MFTBoundary'+Date.now();
+            var meta = existing?'{}':JSON.stringify({name:filename,parents:[folderId]});
+            var body = '--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+meta+'\r\n--'+boundary+'\r\nContent-Type: '+mimeType+'\r\n\r\n'+content+'\r\n--'+boundary+'--';
+            return fetch(url, { method:method, headers:{Authorization:'Bearer '+driveAccessToken,'Content-Type':'multipart/related; boundary='+boundary}, body:body });
+        }).then(function(r) { return r.json(); }).then(function() {
+            var now = new Date();
+            setDriveSyncStatus('synced','Synced '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
+            if (cb) cb();
+        }).catch(function(e) { console.error('Drive save error:', e); setDriveSyncStatus('error','Sync failed'); });
+    });
+}
+function readJsonFileFromDrive(filename, cb) {
+    if (!driveAccessToken) return;
+    ensureDriveFolder(function(folderId) {
+        fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27'+encodeURIComponent(filename)+'%27+and+%27'+folderId+'%27+in+parents+and+trashed%3Dfalse&fields=files(id)', {
+            headers: { Authorization: 'Bearer '+driveAccessToken }
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (!(d.files&&d.files.length)) { if (cb) cb(null); return; }
+            return fetch('https://www.googleapis.com/drive/v3/files/'+d.files[0].id+'?alt=media', {
+                headers: { Authorization: 'Bearer '+driveAccessToken }
+            }).then(function(r) { return r.json(); }).then(function(fd) { if (cb) cb(fd); });
+        }).catch(function() { if (cb) cb(null); });
+    });
+}
+function loadSettingsFromDrive() {
+    readJsonFileFromDrive('mft_settings.json', function(data) {
+        if (data && data.students) {
+            students = data.students;
+            saveStudentsLocally();
+            refreshStudentDropdowns();
+        }
+        if (data && data.portfolio) {
+            saveRawPortfolio(data.portfolio);
+        }
+    });
+}
+function saveSettingsToDrive() {
+    saveFileToDrive('mft_settings.json', JSON.stringify({ students: students }, null, 2), 'application/json');
+    savePortfolioToDrive();
+}
+function startDriveAutoSync() {
+    stopDriveAutoSync();
+    driveAutoSyncInterval = setInterval(function() { saveSettingsToDrive(); }, 300000);
+}
+function stopDriveAutoSync() { if (driveAutoSyncInterval) { clearInterval(driveAutoSyncInterval); driveAutoSyncInterval = null; } }
+function manualSaveToDrive() { saveSettingsToDrive(); setDriveSyncStatus('syncing','Syncing...'); }
+
+/* =============================================
+   STUDENT ROSTER
+============================================= */
+function saveStudentsLocally() { localStorage.setItem('mft_students', JSON.stringify(students)); }
+function loadStudentsLocally() {
+    try { var raw = localStorage.getItem('mft_students'); if (raw) students = JSON.parse(raw); } catch(e) { students = []; }
+}
+function addStudent() {
+    var input = document.getElementById('studentNameInput');
+    var name = String(input.value||'').trim();
+    if (!name) return;
+    if (students.indexOf(name) !== -1) { alert('Student already exists.'); return; }
+    students.push(name);
+    students.sort();
+    saveStudentsLocally();
+    refreshStudentDropdowns();
+    renderStudentList();
+    input.value = '';
+    input.focus();
+    document.getElementById('studentCount').textContent = students.length + ' student' + (students.length!==1?'s':'');
+}
+function removeStudent(name) {
+    if (!confirm('Remove '+name+' from the roster? This does not delete their portfolio data.')) return;
+    students = students.filter(function(s) { return s !== name; });
+    saveStudentsLocally();
+    refreshStudentDropdowns();
+    renderStudentList();
+    document.getElementById('studentCount').textContent = students.length + ' student' + (students.length!==1?'s':'');
+}
+function clearAllStudents() {
+    if (!confirm('Remove ALL students from the roster? Portfolio data will not be deleted.')) return;
+    students = [];
+    saveStudentsLocally();
+    refreshStudentDropdowns();
+    renderStudentList();
+    document.getElementById('studentCount').textContent = '0 students';
+}
+function renderStudentList() {
+    var list = document.getElementById('studentList');
+    list.innerHTML = '';
+    students.forEach(function(name) {
+        var li = document.createElement('li');
+        li.innerHTML = '<span>'+escapeHtml(name)+'</span><button onclick="removeStudent(\''+escapeHtml(name)+'\')">&times;</button>';
+        list.appendChild(li);
+    });
+}
+function exportStudents() {
+    var blob = new Blob([students.join('\n')], { type: 'text/plain' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'math_class_roster.txt';
+    a.click();
+}
+function importStudents(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+        var names = ev.target.result.split(/[\r\n,]+/).map(function(n) { return n.trim(); }).filter(Boolean);
+        names.forEach(function(name) {
+            if (students.indexOf(name) === -1) students.push(name);
+        });
+        students.sort();
+        saveStudentsLocally();
+        refreshStudentDropdowns();
+        renderStudentList();
+        document.getElementById('studentCount').textContent = students.length + ' student' + (students.length!==1?'s':'');
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+}
+function refreshStudentDropdowns() {
+    ['studentSelect','portfolioStudentSelect'].forEach(function(id) {
+        var sel = document.getElementById(id);
+        if (!sel) return;
+        var prev = sel.value;
+        sel.innerHTML = '<option value="">'+(id==='portfolioStudentSelect'?'-- Select a student to view progress --':'-- Choose a student --')+'</option>';
+        students.forEach(function(name) {
+            var opt = document.createElement('option');
+            opt.value = name; opt.textContent = name;
+            sel.appendChild(opt);
+        });
+        if (prev && students.indexOf(prev)!==-1) sel.value = prev;
+    });
+}
+function toggleRosterVisibility() {
+    var roster = document.getElementById('rosterSection');
+    var btn = document.getElementById('toggleRosterBtn');
+    if (!roster||!btn) return;
+    var hidden = roster.style.display==='none'||window.getComputedStyle(roster).display==='none';
+    roster.style.display = hidden?'':'none';
+    btn.textContent = hidden?'&#127891; Hide Class Roster':'&#127891; Show Class Roster';
+}
+function updateSelectedStudent() { selectedStudent = document.getElementById('studentSelect').value; }
+
+/* =============================================
+   PORTFOLIO
+============================================= */
+function getPortfolioData() {
+    try { var raw = localStorage.getItem('mft_portfolio'); return raw?JSON.parse(raw):{}; } catch(e) { return {}; }
+}
+function saveRawPortfolio(data) { localStorage.setItem('mft_portfolio', JSON.stringify(data)); }
+function savePortfolioData(data) { saveRawPortfolio(data); }
+function saveStudentSession(studentName, sessionData) {
+    if (!studentName) return;
+    var pf = getPortfolioData();
+    if (!pf[studentName]) pf[studentName] = { sessions: [] };
+    pf[studentName].sessions.push(sessionData);
+    if (pf[studentName].sessions.length > 50) pf[studentName].sessions = pf[studentName].sessions.slice(-50);
+    savePortfolioData(pf);
+    if (document.getElementById('portfolioStudentSelect') && document.getElementById('portfolioStudentSelect').value===studentName) renderStudentPortfolio();
+}
+function savePortfolioToDrive() {
+    saveFileToDrive('mft_portfolio.json', JSON.stringify(getPortfolioData(), null, 2), 'application/json');
+}
+function loadPortfolioFromDrive() {
+    readJsonFileFromDrive('mft_portfolio.json', function(data) {
+        if (data) saveRawPortfolio(data);
+    });
+}
+function renderStudentPortfolio() {
+    var sel = document.getElementById('portfolioStudentSelect');
+    var content = document.getElementById('portfolioContent');
+    if (!sel||!content) return;
+    var name = sel.value;
+    if (!name) { content.innerHTML = '<div class="portfolio-empty">Select a student above to view their progress charts and session history.</div>'; return; }
+    var pf = getPortfolioData();
+    var sd = pf[name];
+    if (!sd||!sd.sessions||sd.sessions.length===0) {
+        content.innerHTML = '<div class="portfolio-empty">No sessions recorded for '+escapeHtml(name)+'. Grade an assignment and sync to build their portfolio.</div>';
+        return;
+    }
+    var sessions = sd.sessions.slice().sort(function(a,b) { return (a.createdAt?new Date(a.createdAt).getTime():0)-(b.createdAt?new Date(b.createdAt).getTime():0); });
+    var latest = sessions[sessions.length-1];
+    var prev = sessions.length>=2?sessions[sessions.length-2]:null;
+    var overalls = sessions.map(function(s) { return s.overall!=null?Number(s.overall):null; }).filter(function(v) { return v!=null&&!isNaN(v); });
+    var avg = overalls.length?Math.round(overalls.reduce(function(a,b){return a+b;},0)/overalls.length):null;
+    var latestOv = latest.overall!=null?Number(latest.overall):null;
+    var prevOv = prev&&prev.overall!=null?Number(prev.overall):null;
+    var trend = latestOv!=null&&prevOv!=null?latestOv-prevOv:null;
+
+    var html = '<div class="portfolio-stats">';
+    html += '<div class="stat-card"><div class="stat-value">'+(latestOv!=null?latestOv+'%':'--')+'</div><div class="stat-label">Latest Score</div>';
+    if (trend!=null) html += '<div class="stat-trend '+(trend>0?'trend-up':trend<0?'trend-down':'trend-flat')+'">'+(trend>0?'+':'')+trend+'% vs last</div>';
+    html += '</div>';
+    html += '<div class="stat-card"><div class="stat-value">'+(avg!=null?avg+'%':'--')+'</div><div class="stat-label">Average</div></div>';
+    html += '<div class="stat-card"><div class="stat-value">'+sessions.length+'</div><div class="stat-label">Sessions</div></div>';
+    html += '</div>';
+
+    html += '<div class="chart-wrap"><canvas id="portfolioCatChart" style="max-height:200px;"></canvas></div>';
+    html += '<h4 style="font-size:14px;margin:0 0 8px;">Session History</h4><ul class="session-list">';
+    sessions.reverse().forEach(function(s, i) {
+        var d = s.createdAt?new Date(s.createdAt):null;
+        var dateStr = d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}):'Unknown';
+        html += '<li class="session-item" onclick="showSessionDetail(\''+escapeHtml(name)+'\','+i+')"><div class="session-date">'+dateStr+'</div><div class="session-score">Overall: '+(s.overall!=null?s.overall+'%':'N/A')+' &middot; '+s.totalScore+' pts</div></li>';
+    });
+    html += '</ul>';
+    content.innerHTML = html;
+
+    setTimeout(function() {
+        var catAvgs = {};
+        CATEGORY_KEYS.forEach(function(key) {
+            var vals = sessions.map(function(s) { return s.categoryScores&&s.categoryScores[key]!=null?Number(s.categoryScores[key]):null; }).filter(function(v){return v!=null&&!isNaN(v);});
+            catAvgs[key] = vals.length?Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length):0;
+        });
+        var ctx = document.getElementById('portfolioCatChart');
+        if (!ctx) return;
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: CATEGORY_KEYS.map(function(k) { return CATEGORY_LABELS[k].split(' &')[0].replace('&amp;', '&'); }),
+                datasets: [{ label: 'Average %', data: CATEGORY_KEYS.map(function(k){return catAvgs[k];}), backgroundColor: ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444'], borderRadius: 4 }]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } }
+        });
+    }, 100);
+}
+
+/* =============================================
+   PHOTO HANDLING
+============================================= */
+function handlePhotoSelect(e) {
+    var files = Array.from(e.target.files||[]);
+    processPhotoFiles(files);
+}
+function handlePhotoDrop(e) {
+    e.preventDefault();
+    e.target.classList.remove('drag-over');
+    var files = Array.from(e.dataTransfer.files||[]);
+    processPhotoFiles(files);
+}
+function processPhotoFiles(files) {
+    files.forEach(function(file) {
+        if (!file.type.match(/image\/(jpeg|png|heic|heif|webp)/i)) return;
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+            selectedPhotos.push({ dataUrl: ev.target.result, originalDataUrl: null, name: file.name, mimeType: file.type });
+            renderPhotoPreviews();
+            updateGradeButton();
+        };
+        reader.readAsDataURL(file);
+    });
+    document.getElementById('photoInput').value = '';
+}
+function removePhoto(idx) {
+    selectedPhotos.splice(idx, 1);
+    renderPhotoPreviews();
+    updateGradeButton();
+}
+function movePhoto(idx, direction) {
+    var newIdx = idx + (direction==='earlier'?-1:1);
+    if (newIdx<0||newIdx>=selectedPhotos.length) return;
+    var tmp = selectedPhotos[idx];
+    selectedPhotos[idx] = selectedPhotos[newIdx];
+    selectedPhotos[newIdx] = tmp;
+    renderPhotoPreviews();
+}
+function renderPhotoPreviews() {
+    var wrap = document.getElementById('photoPreviewWrap');
+    var count = document.getElementById('photoCount');
+    wrap.innerHTML = '';
+    selectedPhotos.forEach(function(p, i) {
+        var isFirst = i===0;
+        var isLast = i===selectedPhotos.length-1;
+        var hasOriginal = !!p.originalDataUrl;
+        wrap.innerHTML += '<div class="photo-preview-card'+(isFirst?' primary':'')+'">'+
+            '<button class="photo-preview-remove" onclick="removePhoto('+i+')">&times;</button>'+
+            '<img src="'+p.dataUrl+'" alt="Photo '+(i+1)+'">'+
+            '<div class="photo-preview-actions">'+
+            '<button onclick="movePhoto('+i+',\'earlier\')"'+(isFirst?' disabled':'')+'>Move Earlier</button>'+
+            '<button onclick="movePhoto('+i+',\'later\')"'+(isLast?' disabled':'')+'>Move Later</button>'+
+            '<button onclick="openCropModal('+i+')">&#x2702; Crop</button>'+
+            '<button onclick="resetPhotoCrop('+i+')"'+(hasOriginal?'':' disabled')+'>&#x21BA; Reset</button>'+
+            '</div></div>';
+    });
+    count.textContent = selectedPhotos.length+' photo'+(selectedPhotos.length!==1?'s':'')+' selected';
+    document.getElementById('questionConfig').style.display = selectedPhotos.length?'':'none';
+    document.getElementById('questionList').style.display = detectedQuestions.length?'':'none';
+}
+function getModelId() {
+    return String((document.getElementById('modelSelect')||{}).value||'').trim() || 'google/gemini-3.1-flash-lite-preview';
+}
+function updateGradeButton() {
+    var btn = document.getElementById('gradeBtn');
+    if (selectedPhotos.length === 0) {
+        btn.textContent = '🔍 Detect Questions';
+        btn.disabled = true;
+        gradingPhase = null;
+    } else if (!detectedQuestions.length) {
+        btn.textContent = '🔍 Detect Questions';
+        btn.disabled = false;
+        gradingPhase = 'detect';
+    } else {
+        btn.textContent = '📝 Grade Assignment';
+        btn.disabled = false;
+        gradingPhase = 'grade';
+    }
+    if (selectedPhotos.length || detectedQuestions.length) {
+        document.getElementById('resetBtn').style.display = '';
+    }
+}
+
+/* =============================================
+   CATEGORY WEIGHTS
+============================================= */
+function getActiveCategories() {
+    var hasWP = document.getElementById('qTypeWordProblems') ? document.getElementById('qTypeWordProblems').checked : true;
+    var hasVocab = document.getElementById('qTypeVocabulary') ? document.getElementById('qTypeVocabulary').checked : false;
+    var hasExplain = document.getElementById('qTypeExplanations') ? document.getElementById('qTypeExplanations').checked : false;
+    var active = ['Competencies', 'Communication'];
+    if (hasWP) active.push('ProblemSolving');
+    if (hasVocab) active.push('Vocabulary');
+    if (hasExplain) active.push('Communication');
+    active.push('Neatness');
+    return active.filter(function(v,i,a) { return a.indexOf(v)===i; });
+}
+function getCategoryWeight(key) {
+    var active = getActiveCategories();
+    if (active.indexOf(key)===-1) return 0;
+    var total = 0;
+    active.forEach(function(k) { total += CATEGORY_BASE_WEIGHTS[k]||0; });
+    var base = CATEGORY_BASE_WEIGHTS[key]||0;
+    return Math.round((base/total)*100);
+}
+function updateCategoryWeights() {
+    var display = document.getElementById('categoryWeightsDisplay');
+    if (!display) return;
+    var weights = {};
+    getActiveCategories().forEach(function(k) { weights[k] = getCategoryWeight(k); });
+    var html = 'Category weights: ';
+    var parts = [];
+    getActiveCategories().forEach(function(k) {
+        parts.push('<span>'+CATEGORY_LABELS[k].split(' &')[0].replace('&amp;','&')+': '+weights[k]+'%</span>');
+    });
+    display.innerHTML = html + parts.join(' &middot; ');
+}
+function getTotalMaxPoints() {
+    return detectedQuestions.reduce(function(sum, q) { return sum + (q.maxPoints||1); }, 0);
+}
+
+/* =============================================
+   AI GRADING PIPELINE
+============================================= */
+function showLoading(msg) {
+    document.getElementById('loadingText').textContent = msg||'Working...';
+    document.getElementById('loadingOverlay').classList.add('active');
+}
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
+
+function callOpenRouter(promptText, imageDataUrls, cb) {
+    var apiKey = getApiKey();
+    if (!apiKey) { cb(new Error('No API key set. Open Settings to add your OpenRouter key.'), null); return; }
+    var messages = [{ role: 'user', content: [] }];
+    imageDataUrls.forEach(function(url) {
+        messages[0].content.push({ type: 'image_url', image_url: { url: url } });
+    });
+    messages[0].content.push({ type: 'text', text: promptText });
+
+    fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+apiKey, 'HTTP-Referer': window.location.href, 'X-Title': 'Math Feedback Tool' },
+        body: JSON.stringify({
+            model: getModelId(),
+            messages: messages,
+            max_tokens: 4096,
+            temperature: 0.1,
+            response_format: { type: 'json_object' }
+        })
+    }).then(function(r) {
+        if (!r.ok) return r.json().then(function(e) { throw new Error(e.error?e.error.message:'API error '+r.status); });
+        return r.json();
+    }).then(function(data) {
+        var content = data.choices&&data.choices[0]&&data.choices[0].message?data.choices[0].message.content:'';
+        try { var parsed = JSON.parse(content); cb(null, parsed); } catch(e) { cb(new Error('Failed to parse AI response: '+String(content).substring(0,200)), null); }
+    }).catch(function(e) { cb(e, null); });
+}
+
+function runGrading() {
+    if (!selectedPhotos.length) return;
+    if (!detectedQuestions.length) {
+        runQuestionDetection();
+    } else {
+        runGradeAssignment();
+    }
+}
+
+function runQuestionDetection() {
+    showLoading('Detecting questions and assessing complexity...');
+    var prompt = 'You are a 5th grade math teacher looking at a worksheet photo with student answers written on it. Your job is to identify each question and rate how hard it is.\n\n'+
+        'For each question on the page:\n'+
+        '1. Find the question number\n'+
+        '2. Write the problem exactly as it appears\n'+
+        '3. Decide the COMPLEXITY from 1 (easiest) to 5 (hardest):\n'+
+        '   Level 1: One-step arithmetic, simple fact recall. Example: "12 + 7 = ___"\n'+
+        '   Level 2: Two-step problems, basic application. Example: "Find the area of a 5 by 3 rectangle"\n'+
+        '   Level 3: Multi-step, some reasoning needed. Example: adding fractions with unlike denominators, long multiplication\n'+
+        '   Level 4: Complex multi-step, careful thinking required. Example: multi-step word problems, coordinate graphing\n'+
+        '   Level 5: Advanced reasoning, combining several ideas. Example: multi-concept word problems, early algebra\n'+
+        '4. Also figure out the MATH TOPIC of this worksheet (like "Adding Fractions", "Long Division", "Area and Perimeter", etc.). Look at what most of the questions are about.\n\n'+
+        'Return JSON:\n'+
+        '{\n'+
+        '  "topic": "Adding Fractions",\n'+
+        '  "questions": [\n'+
+        '    { "number": 1, "problemText": "What is 3/4 + 1/2?", "maxPoints": 3 },\n'+
+        '    { "number": 2, "problemText": "...", "maxPoints": 2 }\n'+
+        '  ]\n'+
+        '}\n\n'+
+        'IMPORTANT: Give every question at least 2 maxPoints. Simple ones get 2-3 points. Harder ones get 4-5 points.';
+    var imageUrls = selectedPhotos.map(function(p) { return p.dataUrl; });
+    callOpenRouter(prompt, imageUrls, function(err, result) {
+        hideLoading();
+        if (err) { alert('Question detection failed: '+err.message); return; }
+        if (!result.questions||!result.questions.length) { alert('No questions detected. Try a clearer photo.'); return; }
+        mathTopic = result.topic || 'Math Worksheet';
+        detectedQuestions = result.questions.map(function(q, i) {
+            return {
+                num: q.number||(i+1),
+                text: q.problemText||'Question '+(i+1),
+                maxPoints: Math.max(1, Math.min(5, Math.round(q.maxPoints||3))),
+                complexity: Math.max(1, Math.min(5, Math.round(q.maxPoints||3)))
+            };
+        });
+        gradingResult = null;
+        renderQuestionList();
+        updateGradeButton();
+        updateCategoryWeights();
+        document.getElementById('questionList').style.display = '';
+        document.getElementById('questionConfig').style.display = '';
+        document.getElementById('reportCard').style.display = 'none';
+        document.getElementById('reportEmpty').style.display = '';
+    });
+}
+
+function runGradeAssignment() {
+    showLoading('Grading answers with partial credit...');
+    var questionsDesc = detectedQuestions.map(function(q) {
+        return 'Q'+q.num+': "'+q.text+'" (max '+q.maxPoints+' pts, complexity '+q.complexity+'/5)';
+    }).join('\n');
+    var activeCats = getActiveCategories();
+    var weightsDesc = activeCats.map(function(k) {
+        return CATEGORY_LABELS[k].replace('&amp;','&') + ': ' + getCategoryWeight(k) + '%';
+    }).join(', ');
+    var totalMax = getTotalMaxPoints();
+    var topic = mathTopic || 'Math Worksheet';
+
+    var prompt = 'You are a caring, experienced 5th grade math teacher. You are grading a worksheet on "'+topic+'". Look carefully at the student\'s work in the photo and give real, honest feedback — not generic comments.\n\n'+
+        'QUESTIONS (WITH MAX POINTS):\n'+questionsDesc+'\n\n'+
+        'CATEGORIES AND WEIGHTS: '+weightsDesc+'\n'+
+        'TOTAL MAX POINTS: '+totalMax+'\n\n'+
+        'Instructions:\n'+
+        '1. For EACH question, look at the student\'s actual written answer in the photo. Award a score from 0 to its maxPoints. Give PARTIAL CREDIT when the student showed good thinking but made a small mistake. For example: if they set up the problem right but made an arithmetic error, give about 70-80% of the points. If they got it completely right, give full points.\n'+
+        '2. Write specific feedback for each question. Don\'t just say "correct" or "incorrect." Say what the student did well or what mistake they made. Use language a 5th grader would understand. Examples: "Nice job lining up your decimals" or "You forgot to regroup the ones — try again" or "Your answer is right but you need to label it with inches."\n'+
+        '3. Score each category as a percentage (0-100), based on what you actually see in the student\'s work:\n'+
+        '   - Neatness: Is the work organized? Are the steps clear and easy to follow? Is the handwriting legible?\n'+
+        '   - Vocabulary: Did they use correct math terms where needed? (Only score if there are vocabulary questions.)\n'+
+        '   - Competencies: How accurate are the answers? This is the most important category.\n'+
+        '   - Communication: Are units labeled? Are explanations clear when asked? Can someone else follow their thinking?\n'+
+        '   - Problem-Solving: For word problems, did they pick a good strategy? Did they show their steps? (Only score if there are word problems.)\n'+
+        '4. Write 3-5 feedback comments that are SPECIFIC to this student\'s work. Name the exact problem numbers. Mention specific things the student did well and specific things to work on. Write like a real teacher talking to a student — warm but direct. Use a 5th grade reading level.\n'+
+        '5. For the "correctedMath" field, show the correct answer for each problem WITH THE STEPS SHOWN. Write each problem on its own line. Show the work step by step. Put the final answer on its own line with "Answer:" in front of it. Example:\n'+
+        '   "Q1: 3/4 + 1/2 = 3/4 + 2/4 = 5/4\n   Answer: 5/4 or 1 1/4"\n'+
+        '6. Pick ONE strength and ONE grow goal for this student. Be specific.\n\n'+
+        'Return JSON:\n'+
+        '{\n'+
+        '  "questions": [\n'+
+        '    { "number": 1, "score": 3, "maxPoints": 3, "feedback": "You got it! Adding fractions with the same denominator is no problem for you." },\n'+
+        '    ...\n'+
+        '  ],\n'+
+        '  "categoryScores": {\n'+
+        '    "Neatness": 90,\n'+
+        '    "Vocabulary": 85,\n'+
+        '    "Competencies": 78,\n'+
+        '    "Communication": 80,\n'+
+        '    "ProblemSolving": 75\n'+
+        '  },\n'+
+        '  "overall": 82,\n'+
+        '  "totalScore": 66,\n'+
+        '  "totalMax": 80,\n'+
+        '  "strength": "You do a great job organizing your work so each step is clear.",\n'+
+        '  "growGoal": "Remember to double-check your subtraction — question 4 and 7 had small borrowing mistakes.",\n'+
+        '  "teacherComment": "Good effort on this fractions worksheet! Your adding and subtracting work looks solid. Take your time with word problems and always check if your answer makes sense.",\n'+
+        '  "feedback": [\n'+
+        '    "Your work on questions 1-3 is really neat and easy to follow.",\n'+
+        '    "On question 4, you set up the division correctly but made a small calculation error — check 84 divided by 6 again.",\n'+
+        '    "Question 7 needs a unit label on your answer (centimeters).",\n'+
+        '    "Nice job showing all your steps on the word problem — that helps me see your thinking!"\n'+
+        '  ],\n'+
+        '  "correctedMath": "Q1: 3/4 + 1/2\\nFind a common denominator: 1/2 = 2/4\\n3/4 + 2/4 = 5/4\\nAnswer: 5/4 or 1 1/4\\n\\nQ2: 84 ÷ 6\\n6 goes into 8 once (6), remainder 2\\nBring down 4: 24 ÷ 6 = 4\\nAnswer: 14\\n\\n...",\n'+
+        '  "categoryNotes": {\n'+
+        '    "Neatness": "Your numbers are written clearly and each step is on its own line.",\n'+
+        '    "Competencies": "Most answers are correct. Watch out for regrouping errors.",\n'+
+        '    "Communication": "Good labels on most answers, but questions 5 and 7 are missing units."\n'+
+        '  }\n'+
+        '}';
+    var imageUrls = selectedPhotos.map(function(p) { return p.dataUrl; });
+    callOpenRouter(prompt, imageUrls, function(err, result) {
+        hideLoading();
+        if (err) { alert('Grading failed: '+err.message); return; }
+        gradingResult = result;
+        gradingResult.totalMax = gradingResult.totalMax || getTotalMaxPoints();
+        gradingResult.totalScore = gradingResult.totalScore || (gradingResult.questions||[]).reduce(function(s,q){return s+(q.score||0);},0);
+        if (!gradingResult.overall && gradingResult.totalMax) {
+            gradingResult.overall = Math.round((gradingResult.totalScore/gradingResult.totalMax)*100);
+        }
+        renderReportCard();
+        updateGradeButton();
+    });
+}
+
+function renderQuestionList() {
+    var inner = document.getElementById('questionListInner');
+    var totalEl = document.getElementById('totalMaxPoints');
+    var total = getTotalMaxPoints();
+    inner.innerHTML = detectedQuestions.map(function(q) {
+        return '<div class="question-item"><span class="question-num">#'+q.num+'</span><span class="question-text">'+escapeHtml(q.text)+'</span><span class="question-complexity complexity-'+q.complexity+'">'+q.maxPoints+' pts</span></div>';
+    }).join('');
+    totalEl.textContent = 'Total: '+total+' points across '+detectedQuestions.length+' questions';
+}
+
+function renderReportCard() {
+    var r = gradingResult;
+    var name = selectedStudent||'Student';
+    var total = r.totalScore||0;
+    var max = r.totalMax||getTotalMaxPoints();
+    var overall = r.overall!=null?r.overall:Math.round((total/max)*100);
+    var topic = mathTopic || 'Math Worksheet';
+    var today = new Date();
+    var dateStr = today.toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+
+    var html = '';
+
+    // SCORE STRIP
+    html += '<div class="section-title">'+escapeHtml(topic)+' &middot; '+dateStr+'</div>';
+    html += '<div class="score-strip">';
+    html += '<div class="score-box" style="flex:1;text-align:center;">';
+    html += '<div class="score-number">'+overall+'%</div>';
+    html += '<div class="score-label">Overall Score</div>';
+    html += '<div class="score-note">'+total+' out of '+max+' points</div>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '<div style="font-size:14px;color:var(--muted);margin-bottom:16px;"><strong>Student:</strong> '+escapeHtml(name)+'</div>';
+
+    // RUBRIC CARDS
+    html += '<div class="section-title">Rubric Breakdown</div>';
+    html += '<div class="cards">';
+    var activeCats = getActiveCategories();
+    activeCats.forEach(function(key) {
+        var score = (r.categoryScores&&r.categoryScores[key]!=null)?r.categoryScores[key]:0;
+        var displayScore = score;
+        var scoreClass = displayScore>=90?'score-9':displayScore>=80?'score-8':displayScore>=70?'score-7':displayScore>=60?'score-6':displayScore>=50?'score-5':'score-4';
+        var weight = getCategoryWeight(key);
+        var note = (r.categoryNotes&&r.categoryNotes[key])?r.categoryNotes[key]:'';
+        html += '<div class="rubric-card">';
+        html += '<div class="pill"><span>'+CATEGORY_LABELS[key].replace('&amp;','&')+'</span><span class="pill-score '+scoreClass+'">'+displayScore+'%</span></div>';
+        html += '<div>'+escapeHtml(note)+'</div>';
+        html += '</div>';
+    });
+    html += '</div>';
+
+    // CORRECTED MATH (before feedback, like writing tool's corrected writing)
+    if (r.correctedMath) {
+        html += '<div class="section-title">Corrected Math</div>';
+        html += '<div class="corrected-math"><div class="corrected-math-content">'+escapeHtml(r.correctedMath)+'</div></div>';
+    }
+
+    // FEEDBACK
+    if (r.feedback && r.feedback.length) {
+        html += '<div class="section-title">Feedback</div>';
+        r.feedback.forEach(function(f) {
+            var cls = f.toLowerCase().indexOf('great')!==-1||f.toLowerCase().indexOf('nice')!==-1||f.toLowerCase().indexOf('excellent')!==-1?'good':f.toLowerCase().indexOf('remember')!==-1||f.toLowerCase().indexOf('try')!==-1||f.toLowerCase().indexOf('check')!==-1?'warning':'';
+            html += '<div class="feedback-item '+cls+'">'+escapeHtml(f)+'</div>';
+        });
+    }
+
+    // STRENGTH & GROW GOAL
+    if (r.strength || r.growGoal) {
+        html += '<div class="section-title">Strength &amp; Grow Goal</div>';
+        if (r.strength) html += '<div class="feedback-item good"><strong>Strength:</strong> '+escapeHtml(r.strength)+'</div>';
+        if (r.growGoal) html += '<div class="feedback-item warning"><strong>Grow Goal:</strong> '+escapeHtml(r.growGoal)+'</div>';
+    }
+
+    // PER-QUESTION DETAIL
+    if (r.questions && r.questions.length) {
+        html += '<div class="section-title">Question Details</div>';
+        r.questions.forEach(function(q) {
+            var pct = q.maxPoints?Math.round((q.score/q.maxPoints)*100):0;
+            html += '<div class="pq-item"><div class="pq-header"><strong>Q'+q.number+':</strong> <span class="pq-score">'+q.score+'/'+q.maxPoints+' ('+pct+'%)</span></div><div class="pq-feedback">'+escapeHtml(q.feedback||'')+'</div></div>';
+        });
+    }
+
+    // ACTIONS
+    html += '<div class="result-actions-wrap">';
+    html += '<button type="button" class="primary-btn" onclick="saveSessionToPortfolio()">&#128190; Save to Portfolio</button>';
+    html += '<button type="button" class="nb-preview-print-btn" onclick="printNotebookSummary()" style="width:auto;">&#128424; Print to Notebook</button>';
+    html += '</div>';
+
+    document.getElementById('reportCard').innerHTML = html;
+    document.getElementById('reportCard').style.display = '';
+    document.getElementById('reportEmpty').style.display = 'none';
+}
+
+function showSessionDetail(studentName, reverseIdx) {
+    var pf = getPortfolioData();
+    var sd = pf[studentName];
+    if (!sd||!sd.sessions) return;
+    var sessions = sd.sessions.slice().sort(function(a,b) { return (a.createdAt?new Date(a.createdAt).getTime():0)-(b.createdAt?new Date(b.createdAt).getTime():0); });
+    var s = sessions[sessions.length-1-reverseIdx];
+    if (!s) return;
+    var d = s.createdAt?new Date(s.createdAt):new Date();
+    var html = '<div style="padding:16px;background:var(--card);border-radius:8px;margin-bottom:16px;">';
+    html += '<strong>'+d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+'</strong><br>';
+    html += '<span style="font-size:14px;">Overall: '+(s.overall!=null?s.overall+'%':'N/A')+' &middot; '+s.totalScore+'/'+s.totalMax+' pts</span><br>';
+    if (s.categoryScores) {
+        html += '<div style="margin-top:8px;">';
+        Object.keys(s.categoryScores).forEach(function(key) {
+            html += '<span style="display:inline-block;margin-right:12px;font-size:12px;"><strong>'+key+':</strong> '+s.categoryScores[key]+'%</span>';
+        });
+        html += '</div>';
+    }
+    if (s.feedback&&s.feedback.length) {
+        html += '<div style="margin-top:8px;font-size:12px;color:var(--muted);"><strong>Feedback:</strong><br>';
+        s.feedback.forEach(function(f) { html += '&bull; '+escapeHtml(f)+'<br>'; });
+        html += '</div>';
+    }
+    html += '</div>';
+    document.getElementById('portfolioContent').innerHTML = html + '<button type="button" class="secondary-btn" onclick="renderStudentPortfolio()">&larr; Back to overview</button>';
+}
+
+function saveSessionToPortfolio() {
+    if (!selectedStudent) { alert('Please select a student first.'); return; }
+    var r = gradingResult;
+    if (!r) { alert('No grading result to save.'); return; }
+    var total = r.totalScore||0;
+    var max = r.totalMax||getTotalMaxPoints();
+    var session = {
+        id: 'mft_'+Date.now()+'_'+Math.random().toString(36).substring(2,8),
+        createdAt: new Date().toISOString(),
+        date: new Date().toISOString().split('T')[0],
+        topic: mathTopic||'Math Worksheet',
+        totalScore: total,
+        totalMax: max,
+        overall: r.overall!=null?r.overall:Math.round((total/max)*100),
+        categoryScores: r.categoryScores||{},
+        categoryNotes: r.categoryNotes||{},
+        questions: (r.questions||[]).map(function(q) { return { number: q.number, score: q.score, maxPoints: q.maxPoints, feedback: q.feedback }; }),
+        feedback: r.feedback||[],
+        strength: r.strength||'',
+        growGoal: r.growGoal||'',
+        teacherComment: r.teacherComment||'',
+        correctedMath: r.correctedMath||'',
+        activeCategories: getActiveCategories(),
+        questionConfig: {
+            computation: document.getElementById('qTypeComputation')?document.getElementById('qTypeComputation').checked:true,
+            wordProblems: document.getElementById('qTypeWordProblems')?document.getElementById('qTypeWordProblems').checked:true,
+            vocabulary: document.getElementById('qTypeVocabulary')?document.getElementById('qTypeVocabulary').checked:false,
+            explanations: document.getElementById('qTypeExplanations')?document.getElementById('qTypeExplanations').checked:false
+        },
+        images: selectedPhotos.map(function(p) { return { name: p.name, mimeType: p.mimeType, dataUrl: p.dataUrl }; })
+    };
+    saveStudentSession(selectedStudent, session);
+    if (driveAccessToken) { savePortfolioToDrive(); }
+    alert('Session saved to '+selectedStudent+'\'s portfolio!');
+}
+
+function resetTool() {
+    selectedPhotos = [];
+    detectedQuestions = [];
+    gradingResult = null;
+    gradingPhase = null;
+    mathTopic = '';
+    document.getElementById('photoPreviewWrap').innerHTML = '';
+    document.getElementById('photoCount').textContent = '';
+    document.getElementById('questionList').style.display = 'none';
+    document.getElementById('questionConfig').style.display = 'none';
+    document.getElementById('questionListInner').innerHTML = '';
+    document.getElementById('totalMaxPoints').textContent = '';
+    document.getElementById('reportCard').style.display = 'none';
+    document.getElementById('reportEmpty').style.display = '';
+    document.getElementById('resetBtn').style.display = 'none';
+    updateGradeButton();
+}
+
+/* =============================================
+   TAB SWITCHING
+============================================= */
+function switchTab(tab) {
+    var toolShell = document.getElementById('toolShell');
+    var adminPanel = document.getElementById('adminPanel');
+    var toolTab = document.getElementById('toolTabBtn');
+    var adminTab = document.getElementById('adminTabBtn');
+    if (tab === 'tool') {
+        toolShell.classList.add('active'); adminPanel.classList.remove('active');
+        toolTab.classList.add('active'); adminTab.classList.remove('active');
+    } else {
+        toolShell.classList.remove('active'); adminPanel.classList.add('active');
+        toolTab.classList.remove('active'); adminTab.classList.add('active');
+        renderStudentList();
+        document.getElementById('studentCount').textContent = students.length+' student'+(students.length!==1?'s':'');
+        refreshStudentDropdowns();
+        refreshPortfolioDropdown();
+    }
+}
+function refreshPortfolioDropdown() {
+    var sel = document.getElementById('portfolioStudentSelect');
+    if (!sel) return;
+    var prev = sel.value;
+    sel.innerHTML = '<option value="">-- Select a student to view progress --</option>';
+    students.forEach(function(name) {
+        var opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        sel.appendChild(opt);
+    });
+    if (prev && students.indexOf(prev)!==-1) sel.value = prev;
+}
+
+/* =============================================
+   NOTEBOOK PRINT
+============================================= */
+function fillNotebookSummary() {
+    var r = gradingResult;
+    if (!r) { alert('Please grade an assignment first.'); return false; }
+    var name = selectedStudent||'No student selected';
+    var topic = mathTopic||'Math Worksheet';
+    var today = new Date();
+    var dateText = today.toLocaleDateString('en-GB');
+    var overall = r.overall!=null?r.overall+'%':'--%';
+    var total = r.totalScore||0;
+    var max = r.totalMax||getTotalMaxPoints();
+
+    document.getElementById('notebookTitle').textContent = topic;
+    var page2Title = document.getElementById('notebookPage2Title');
+    if (page2Title) page2Title.textContent = topic;
+    document.getElementById('notebookOverallScore').textContent = overall;
+    document.getElementById('notebookDate').textContent = dateText;
+    var page2Date = document.getElementById('notebookPage2Date');
+    if (page2Date) page2Date.textContent = dateText;
+    document.getElementById('notebookStudentName').textContent = name;
+    document.getElementById('notebookTopic').textContent = topic;
+
+    document.getElementById('notebookStrength').textContent = r.strength||'Keep up the good work!';
+    document.getElementById('notebookGrowGoal').textContent = r.growGoal||'Focus on showing all your steps.';
+    document.getElementById('notebookTeacherComment').textContent = r.teacherComment||(r.feedback&&r.feedback.length?r.feedback[0]:'Good effort on this assignment.');
+
+    // Detailed assessment grid
+    var nbDetailed = document.getElementById('notebookDetailedAssessment');
+    if (nbDetailed) {
+        var html = '';
+        var activeCats = getActiveCategories();
+        activeCats.forEach(function(key) {
+            var score = (r.categoryScores&&r.categoryScores[key]!=null)?r.categoryScores[key]:0;
+            var note = (r.categoryNotes&&r.categoryNotes[key])?r.categoryNotes[key]:'';
+            var label = CATEGORY_LABELS[key].replace('&amp;','&');
+            html += '<div class="category">';
+            html += '<div class="category-header"><span class="category-name">'+label+'</span><span class="score-badge">'+score+'%</span></div>';
+            html += '<div class="score-bar-track"><div class="score-bar-fill" style="width:'+score+'%;"></div></div>';
+            if (note) html += '<div class="evidence-block">'+escapeHtml(note)+'</div>';
+            html += '</div>';
+        });
+        nbDetailed.innerHTML = html;
+    }
+
+    // Corrected math
+    var correctedEl = document.getElementById('notebookCorrectedMath');
+    if (correctedEl) correctedEl.textContent = r.correctedMath||'No corrected math available.';
+    return true;
+}
+
+function getNotebookPrintCss() {
+    return [
+        "@page { size: A5 portrait; margin: 0; }",
+        "*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }",
+        "html { -webkit-font-smoothing: antialiased; }",
+        "body { font-family: 'Inter', 'Helvetica Neue', sans-serif; font-size: 12.4px; color: #111111; background: #e0e0e0; line-height: 1.4; }",
+        ".screen-controls { text-align: center; padding: 10px; font-family: 'Inter', 'Helvetica Neue', sans-serif; font-size: 11px; color: #555; }",
+        ".btn-print { display: inline-block; background: #222; color: #fff; border: none; padding: 6px 20px; border-radius: 4px; font-size: 11px; font-family: 'Inter', 'Helvetica Neue', sans-serif; font-weight: 600; cursor: pointer; margin-top: 6px; }",
+        ".btn-print:hover { background: #000; }",
+        ".page { width: 148mm; min-height: 210mm; background: #ffffff; margin: 8mm auto; padding: 8mm 9mm 9mm; box-shadow: 0 2px 12px rgba(0,0,0,0.18); page-break-after: always; }",
+        ".page:last-child { page-break-after: auto; }",
+        ".page-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #333333; padding-bottom: 4px; margin-bottom: 5px; }",
+        ".page-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: #444444; margin-bottom: 2px; }",
+        ".page-title { font-size: 18.5px; font-weight: 700; color: #111111; line-height: 1.1; }",
+        ".overall-score { text-align: right; flex-shrink: 0; margin-left: 8px; }",
+        ".overall-label { font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: #444444; margin-bottom: 1px; }",
+        ".overall-value { font-size: 26.5px; font-weight: 700; color: #111111; line-height: 1; }",
+        ".meta-row { display: flex; gap: 14px; font-size: 10.3px; color: #444444; padding: 3px 0 4px; border-bottom: 1px solid #cccccc; margin-bottom: 5px; }",
+        ".meta-row strong { color: #111111; font-weight: 600; }",
+        ".top-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 5px; }",
+        ".info-box { background: #f5f5f5; border: 1px solid #cccccc; border-radius: 4px; padding: 4px 5px; }",
+        ".box-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #444444; margin-bottom: 2px; }",
+        ".info-box p { font-size: 9.9px; color: #111111; line-height: 1.45; }",
+        ".teacher-comment { background: #f5f5f5; border: 1px solid #cccccc; border-left: 3px solid #333333; border-radius: 4px; padding: 4px 5px; margin-bottom: 6px; }",
+        ".teacher-comment p { font-size: 9.9px; color: #111111; line-height: 1.5; }",
+        ".section-title { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: #444444; border-bottom: 1px solid #888888; padding-bottom: 2px; margin-bottom: 5px; margin-top: 0; }",
+        ".assessment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 6px; }",
+        ".category { border: 1px solid #cccccc; border-radius: 3px; padding: 4px 5px; background: #ffffff; }",
+        ".category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }",
+        ".category-name { font-weight: 700; font-size: 10.3px; color: #111111; }",
+        ".score-badge { font-size: 9.3px; font-weight: 700; background: #ececec; border: 1px solid #888888; border-radius: 99px; padding: 0px 5px; white-space: nowrap; color: #111111; }",
+        ".score-bar-track { height: 3.5px; background: #cccccc; border-radius: 99px; margin-bottom: 4px; overflow: hidden; }",
+        ".score-bar-fill { height: 100%; border-radius: 99px; background: #333333; }",
+        ".evidence-block { font-size: 9.3px; color: #111111; line-height: 1.45; margin-bottom: 3px; }",
+        ".page2-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #333333; padding-bottom: 4px; margin-bottom: 8mm; }",
+        ".page2-meta { font-size: 8px; color: #444444; margin-bottom: 2px; }",
+        ".page2-title { font-size: 14px; font-weight: 700; }",
+        ".page2-date { font-size: 8.5px; color: #444444; text-align: right; }",
+        ".corrected-math-print { border: 1px solid #cccccc; border-radius: 4px; padding: 6mm 7mm; }",
+        ".corrected-math-print .section-title { margin-bottom: 5mm; }",
+        ".corrected-math-content-print { font-size: 10px; color: #111111; line-height: 1.85; white-space: pre-wrap; }",
+        "@media print { body { background: white; } .screen-controls { display: none; } .page { margin: 0; box-shadow: none; width: 148mm; min-height: 210mm; } }"
+    ].join("\n");
+}
+
+function buildNotebookPrintDocument(printContentHtml, studentName, mathTitle) {
+    var safeName = (studentName||'').replace(/[\/\\:*?"<>|]/g, '').trim();
+    var safeTitle = (mathTitle||'').replace(/[\/\\:*?"<>|]/g, '').trim();
+    var docTitle = safeName&&safeTitle?safeName+' - '+safeTitle:(safeTitle||safeName||'Math Notebook');
+    return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n'+
+        '<title>'+docTitle+'</title>\n'+
+        '<style>\n'+getNotebookPrintCss()+'\n</style>\n</head>\n<body>\n'+
+        '<div class="screen-controls">'+
+        '<button class="btn-print" onclick="window.print()">Print Notebook</button>'+
+        '</div>\n'+printContentHtml+'\n</body>\n</html>';
+}
+
+function printNotebookSummary() {
+    if (!fillNotebookSummary()) return;
+    var printDoc = document.getElementById('notebookPrintDocument');
+    if (!printDoc) { alert('Notebook print document not found.'); return; }
+
+    var includeCorrected = document.getElementById('includeCorrectedMath');
+    var page2El = document.getElementById('notebookPage2');
+    var page2WasHidden = false;
+    if (page2El && includeCorrected && !includeCorrected.checked) {
+        page2El.style.display = 'none';
+        page2WasHidden = true;
+    }
+
+    var printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) {
+        if (page2WasHidden&&page2El) page2El.style.display = '';
+        alert('Please allow pop-ups for this page to print the notebook summary.');
+        return;
+    }
+
+    var studentName = (document.getElementById('notebookStudentName')||{}).textContent||'';
+    var mathTitle = (document.getElementById('notebookTitle')||{}).textContent||'';
+    var printHtml = buildNotebookPrintDocument(printDoc.innerHTML, studentName, mathTitle);
+
+    if (page2WasHidden&&page2El) page2El.style.display = '';
+
+    printWindow.document.open();
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(function() { printWindow.print(); }, 700);
+}
+
+/* =============================================
+   CROP MODAL
+============================================= */
+var _cropSourceDataUrl = '';
+var _cropImageIndex = 0;
+var _cropDragStart = null;
+var _cropRect = null;
+
+function openCropModal(imgIndex) {
+    if (!selectedPhotos[imgIndex]) return;
+    _cropImageIndex = imgIndex;
+    _cropSourceDataUrl = selectedPhotos[imgIndex].originalDataUrl || selectedPhotos[imgIndex].dataUrl;
+    _cropRect = null;
+    _cropDragStart = null;
+
+    var modal = document.getElementById('cropModal');
+    var canvas = document.getElementById('cropCanvas');
+    var overlay = document.getElementById('cropOverlay');
+    var wrap = document.getElementById('cropCanvasWrap');
+    if (!modal||!canvas||!overlay||!wrap) return;
+
+    modal.classList.add('open');
+    var titleEl = document.getElementById('cropModalTitle');
+    if (titleEl) {
+        titleEl.textContent = selectedPhotos.length>1
+            ? 'Crop Image '+(imgIndex+1)+' of '+selectedPhotos.length+' — drag to select the area to keep'
+            : 'Crop Image — drag to select the area to keep';
+    }
+
+    var img = new Image();
+    img.onload = function() {
+        var maxW = wrap.clientWidth||600;
+        var scale = Math.min(1, maxW/img.naturalWidth);
+        var w = Math.round(img.naturalWidth*scale);
+        var h = Math.round(img.naturalHeight*scale);
+        canvas.width = w; canvas.height = h;
+        overlay.width = w; overlay.height = h;
+        canvas.style.width = w+'px'; canvas.style.height = h+'px';
+        overlay.style.width = w+'px'; overlay.style.height = h+'px';
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        drawCropOverlay();
+    };
+    img.src = _cropSourceDataUrl;
+}
+
+function drawCropOverlay() {
+    var overlay = document.getElementById('cropOverlay');
+    if (!overlay) return;
+    var ctx = overlay.getContext('2d');
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    if (!_cropRect||Math.abs(_cropRect.w)<2||Math.abs(_cropRect.h)<2) return;
+
+    var x = Math.min(_cropRect.x, _cropRect.x+_cropRect.w);
+    var y = Math.min(_cropRect.y, _cropRect.y+_cropRect.h);
+    var w = Math.abs(_cropRect.w);
+    var h = Math.abs(_cropRect.h);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, overlay.width, overlay.height);
+    ctx.clearRect(x, y, w, h);
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, w, h);
+    var hs = 8;
+    ctx.fillStyle = '#2563eb';
+    [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(function(pt) {
+        ctx.fillRect(pt[0]-hs/2, pt[1]-hs/2, hs, hs);
+    });
+}
+
+function getCropPos(e, el) {
+    var rect = el.getBoundingClientRect();
+    var clientX = e.touches?e.touches[0].clientX:e.clientX;
+    var clientY = e.touches?e.touches[0].clientY:e.clientY;
+    var scaleX = el.width/rect.width;
+    var scaleY = el.height/rect.height;
+    var x = Math.round((clientX-rect.left)*scaleX);
+    var y = Math.round((clientY-rect.top)*scaleY);
+    return { x: Math.max(0, Math.min(x, el.width)), y: Math.max(0, Math.min(y, el.height)) };
+}
+
+function applyCrop() {
+    var canvas = document.getElementById('cropCanvas');
+    if (!canvas||!_cropRect||Math.abs(_cropRect.w)<5||Math.abs(_cropRect.h)<5) {
+        alert('Please draw a crop region on the image first.');
+        return;
+    }
+    var x = Math.max(0, Math.min(_cropRect.x, _cropRect.x+_cropRect.w));
+    var y = Math.max(0, Math.min(_cropRect.y, _cropRect.y+_cropRect.h));
+    var w = Math.min(Math.abs(_cropRect.w), canvas.width-x);
+    var h = Math.min(Math.abs(_cropRect.h), canvas.height-y);
+    if (w<5||h<5) { alert('Crop region too small. Please draw a larger area.'); return; }
+
+    var sourceImg = new Image();
+    sourceImg.onload = function() {
+        var scaleX = sourceImg.naturalWidth/canvas.width;
+        var scaleY = sourceImg.naturalHeight/canvas.height;
+        var out = document.createElement('canvas');
+        out.width = Math.round(w*scaleX);
+        out.height = Math.round(h*scaleY);
+        out.getContext('2d').drawImage(sourceImg, Math.round(x*scaleX), Math.round(y*scaleY), out.width, out.height, 0, 0, out.width, out.height);
+        var croppedUrl = out.toDataURL('image/jpeg', 0.92);
+        if (!selectedPhotos[_cropImageIndex].originalDataUrl) {
+            selectedPhotos[_cropImageIndex].originalDataUrl = selectedPhotos[_cropImageIndex].dataUrl;
+        }
+        selectedPhotos[_cropImageIndex].dataUrl = croppedUrl;
+        closeCropModal();
+        renderPhotoPreviews();
+    };
+    sourceImg.src = _cropSourceDataUrl;
+}
+
+function resetPhotoCrop(idx) {
+    if (!selectedPhotos[idx]||!selectedPhotos[idx].originalDataUrl) return;
+    selectedPhotos[idx].dataUrl = selectedPhotos[idx].originalDataUrl;
+    selectedPhotos[idx].originalDataUrl = null;
+    renderPhotoPreviews();
+}
+
+function closeCropModal() {
+    var modal = document.getElementById('cropModal');
+    if (modal) modal.classList.remove('open');
+    _cropRect = null;
+    _cropDragStart = null;
+}
+
+function resetCrop() {
+    if (selectedPhotos[_cropImageIndex]&&selectedPhotos[_cropImageIndex].originalDataUrl) {
+        selectedPhotos[_cropImageIndex].dataUrl = selectedPhotos[_cropImageIndex].originalDataUrl;
+        selectedPhotos[_cropImageIndex].originalDataUrl = null;
+        _cropSourceDataUrl = selectedPhotos[_cropImageIndex].dataUrl;
+    }
+    _cropRect = null;
+    _cropDragStart = null;
+    var canvas = document.getElementById('cropCanvas');
+    var overlay = document.getElementById('cropOverlay');
+    if (canvas&&overlay) {
+        var img = new Image();
+        img.onload = function() {
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            drawCropOverlay();
+        };
+        img.src = _cropSourceDataUrl;
+    }
+}
+
+/* =============================================
+   HELPERS
+============================================= */
+function escapeHtml(str) {
+    return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* =============================================
+   INIT
+============================================= */
+function init() {
+    loadSettingsFromLocalStorage();
+    loadStudentsLocally();
+    refreshStudentDropdowns();
+    updateCategoryWeights();
+    checkHashForOAuthTokens();
+    restoreGoogleStateFromStorage();
+    wireCropModalEvents();
+}
+function wireCropModalEvents() {
+    var overlayEl = document.getElementById('cropOverlay');
+    if (!overlayEl) return;
+
+    function onDown(e) {
+        e.preventDefault();
+        var pos = getCropPos(e, overlayEl);
+        _cropDragStart = pos;
+        _cropRect = { x: pos.x, y: pos.y, w: 0, h: 0 };
+    }
+    function onMove(e) {
+        if (!_cropDragStart) return;
+        e.preventDefault();
+        var pos = getCropPos(e, overlayEl);
+        _cropRect = { x: _cropDragStart.x, y: _cropDragStart.y, w: pos.x - _cropDragStart.x, h: pos.y - _cropDragStart.y };
+        drawCropOverlay();
+    }
+    function onUp(e) {
+        if (!_cropDragStart) return;
+        _cropDragStart = null;
+    }
+
+    overlayEl.addEventListener('mousedown', onDown);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    overlayEl.addEventListener('touchstart', onDown, { passive: false });
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onUp, { passive: false });
+
+    document.getElementById('cropApplyBtn').addEventListener('click', applyCrop);
+    document.getElementById('cropResetBtn').addEventListener('click', resetCrop);
+    document.getElementById('cropCancelBtn').addEventListener('click', closeCropModal);
+    document.getElementById('cropModal').addEventListener('click', function(e) {
+        if (e.target===this) closeCropModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key==='Escape') closeCropModal();
+    });
+}
+init();
+</script>
+</body>
+</html>
