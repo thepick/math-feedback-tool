@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script defer src="https://accounts.google.com/gsi/client"></script>
 <style>
     :root {
         --bg: #f1f5f9;
@@ -458,11 +459,11 @@
             <div id="googleUserInfo" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;">
                 <img id="googleUserAvatar" src="" width="32" height="32" style="border-radius:50%;display:none;" onerror="this.style.display='none'">
                 <div class="auth-status">Signed in as <strong id="googleUserName"></strong></div>
-                <div class="drive-sync-status">
-                    <span class="drive-sync-dot" id="driveSyncDot"></span>
-                    <span id="driveSyncText">Not synced</span>
-                </div>
                 <button type="button" class="btn-google-signout" onclick="handleGoogleSignOut()">Sign Out</button>
+            </div>
+            <div class="drive-sync-status" role="status" aria-live="polite">
+                <span class="drive-sync-dot" id="driveSyncDot"></span>
+                <span id="driveSyncText">Not synced</span>
             </div>
         </div>
         <button type="button" class="secondary-btn roster-toggle-btn" id="toggleRosterBtn" onclick="toggleRosterVisibility()">&#127891; Show Class Roster</button>
@@ -677,6 +678,9 @@
 var API_KEY = '';
 var EMBEDDED_API_KEY = '';
 var GOOGLE_CLIENT_ID = '';
+var GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+var googleAuthPending = false;
+var googleAuthRequestId = 0;
 var DRIVE_FOLDER_NAME = 'MathFeedbackTool';
 var GOOGLE_USER_CACHE_KEY = 'mft_google_user';
 var DRIVE_TOKEN_CACHE_KEY = 'mft_drive_access_token';
@@ -800,22 +804,85 @@ function restoreGoogleStateFromStorage() {
             fetchGoogleUserInfo(token);
         }
     } else if (hasPersistedGoogleConnection()) {
-        scheduleGoogleSessionRestore(5, 2000);
+        driveAccessToken = null;
+        stopDriveAutoSync();
+        showDriveDisconnectedState('Reconnect to continue syncing');
     } else {
         showSignedOutState();
     }
 }
-function scheduleGoogleSessionRestore(max, delay) {
-    if (max <= 0) { clearPersistedGoogleState(); showSignedOutState(); return; }
-    setTimeout(function() { requestDriveAccess(function() { scheduleGoogleSessionRestore(max-1, delay); }, {prompt:'none'}); }, delay);
-}
-function requestDriveAccess(onSuccess, options) {
-    var scope = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
-    var redirectUri = window.location.origin + window.location.pathname;
-    var authUrl = 'https://accounts.google.com/o/oauth2/auth?client_id=' + encodeURIComponent(GOOGLE_CLIENT_ID) + '&redirect_uri=' + encodeURIComponent(redirectUri) + '&response_type=token&scope=' + encodeURIComponent(scope) + (options&&options.prompt==='none'?'&prompt=none':'');
-    window.location.href = authUrl;
+function requestDriveAccess() {
+    if (googleAuthPending) return;
+    if (!GOOGLE_CLIENT_ID) {
+        showDriveDisconnectedState('Add your existing Google client ID in Settings');
+        openSettingsDrawer();
+        return;
+    }
+    if (!window.google || !google.accounts || !google.accounts.oauth2) {
+        showDriveDisconnectedState('Google sign-in is still loading. Try again');
+        return;
+    }
+    var requestId = ++googleAuthRequestId;
+    var cachedUser = getCachedGoogleUser();
+    googleAuthPending = true;
+    stopDriveAutoSync();
+    driveAccessToken = null;
+    setDriveSyncStatus('syncing', 'Connecting...');
+    function failed(message) {
+        if (requestId !== googleAuthRequestId) return;
+        googleAuthPending = false;
+        driveAccessToken = null;
+        localStorage.removeItem(DRIVE_TOKEN_CACHE_KEY);
+        localStorage.removeItem(DRIVE_TOKEN_EXPIRY_CACHE_KEY);
+        showDriveDisconnectedState(message);
+    }
+    try {
+        var client = google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: GOOGLE_DRIVE_SCOPE,
+            hint: cachedUser && cachedUser.email || '',
+            callback: function(response) {
+                if (requestId !== googleAuthRequestId) return;
+                if (!response || response.error || !response.access_token) {
+                    failed('Google connection was declined. Try again');
+                    return;
+                }
+                if (!google.accounts.oauth2.hasGrantedAllScopes(response,
+                    'https://www.googleapis.com/auth/drive.file',
+                    'https://www.googleapis.com/auth/userinfo.profile',
+                    'https://www.googleapis.com/auth/userinfo.email')) {
+                    failed('Allow Drive and profile access to connect');
+                    return;
+                }
+                var expiresIn = Number(response.expires_in);
+                if (!Number.isFinite(expiresIn) || expiresIn <= 0) {
+                    failed('Google returned an invalid connection. Try again');
+                    return;
+                }
+                driveAccessToken = response.access_token;
+                driveFolderId = null;
+                localStorage.setItem(DRIVE_TOKEN_CACHE_KEY, driveAccessToken);
+                localStorage.setItem(DRIVE_TOKEN_EXPIRY_CACHE_KEY, String(Date.now() + expiresIn * 1000));
+                fetchGoogleUserInfo(driveAccessToken).finally(function() {
+                    if (requestId === googleAuthRequestId) googleAuthPending = false;
+                });
+            },
+            error_callback: function() { failed('Google connection canceled or popup blocked. Try again'); }
+        });
+        client.requestAccessToken({ prompt: cachedUser ? '' : 'select_account' });
+    } catch (e) {
+        failed('Could not open Google sign-in. Try again');
+    }
 }
 function handleGoogleSignIn() { requestDriveAccess(); }
+function hasValidDriveAccess() {
+    if (!driveAccessToken) return false;
+    if (Number(localStorage.getItem(DRIVE_TOKEN_EXPIRY_CACHE_KEY) || 0) > Date.now()) return true;
+    driveAccessToken = null;
+    stopDriveAutoSync();
+    showDriveDisconnectedState('Reconnect to continue syncing');
+    return false;
+}
 function showSignedOutState() {
     var signInBtn = document.getElementById('googleSignInBtn');
     var userInfo = document.getElementById('googleUserInfo');
@@ -829,26 +896,41 @@ function showDriveDisconnectedState(msg) {
     if (cachedUser) {
         var signInBtn = document.getElementById('googleSignInBtn');
         var userInfo = document.getElementById('googleUserInfo');
-        if (signInBtn) signInBtn.style.display = 'none';
+        if (signInBtn) signInBtn.style.display = '';
         if (userInfo) userInfo.style.display = 'flex';
         var nameEl = document.getElementById('googleUserName');
         if (nameEl) nameEl.textContent = cachedUser.name||cachedUser.email||'';
-        setDriveSyncStatus('error', msg||'Reconnect needed');
     }
+    setDriveSyncStatus('error', msg||'Reconnect needed');
 }
 function fetchGoogleUserInfo(token) {
-    fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: 'Bearer '+token } })
-        .then(function(r) { return r.json(); })
+    return fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: 'Bearer '+token } })
+        .then(function(r) {
+            if (!r.ok) throw new Error('Could not verify Google account');
+            return r.json();
+        })
         .then(function(info) {
-            if (info.error) { showDriveDisconnectedState(info.error.message); return; }
+            if (token !== driveAccessToken) return;
+            if (info.error || !info.id || !info.email) throw new Error('Could not verify Google account');
+            var previousUser = getCachedGoogleUser();
+            // Keep the existing local roster tied to its account until an explicit sign-out.
+            if (previousUser && previousUser.id !== info.id) throw new Error('Sign out before switching Google accounts');
             googleUser = info;
             localStorage.setItem(GOOGLE_USER_CACHE_KEY, JSON.stringify(info));
+            localStorage.setItem(GOOGLE_CONNECTED_CACHE_KEY, 'true');
             showSignedInState(info);
             startDriveAutoSync();
             loadSettingsFromDrive();
             loadPortfolioFromDrive();
         })
-        .catch(function() { showDriveDisconnectedState('Failed to fetch user info'); });
+        .catch(function(error) {
+            if (token !== driveAccessToken) return;
+            driveAccessToken = null;
+            stopDriveAutoSync();
+            localStorage.removeItem(DRIVE_TOKEN_CACHE_KEY);
+            localStorage.removeItem(DRIVE_TOKEN_EXPIRY_CACHE_KEY);
+            showDriveDisconnectedState(error.message || 'Failed to fetch user info');
+        });
 }
 function showSignedInState(info) {
     var signInBtn = document.getElementById('googleSignInBtn');
@@ -861,6 +943,8 @@ function showSignedInState(info) {
     if (avatar && info.picture) { avatar.src = info.picture; avatar.style.display = ''; }
 }
 function handleGoogleSignOut() {
+    googleAuthRequestId++;
+    googleAuthPending = false;
     clearPersistedGoogleState();
     driveAccessToken = null; googleUser = null; driveFolderId = null;
     stopDriveAutoSync();
@@ -891,7 +975,7 @@ function ensureDriveFolder(cb) {
     }).catch(function(e) { console.error('Drive folder error:', e); setDriveSyncStatus('error','Sync error'); });
 }
 function saveFileToDrive(filename, content, mimeType, cb) {
-    if (!driveAccessToken) return;
+    if (!hasValidDriveAccess()) return;
     setDriveSyncStatus('syncing','Syncing...');
     ensureDriveFolder(function(folderId) {
         fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27'+encodeURIComponent(filename)+'%27+and+%27'+folderId+'%27+in+parents+and+trashed%3Dfalse&fields=files(id)', {
@@ -913,7 +997,7 @@ function saveFileToDrive(filename, content, mimeType, cb) {
     });
 }
 function readJsonFileFromDrive(filename, cb) {
-    if (!driveAccessToken) return;
+    if (!hasValidDriveAccess()) return;
     ensureDriveFolder(function(folderId) {
         fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27'+encodeURIComponent(filename)+'%27+and+%27'+folderId+'%27+in+parents+and+trashed%3Dfalse&fields=files(id)', {
             headers: { Authorization: 'Bearer '+driveAccessToken }
@@ -946,7 +1030,7 @@ function startDriveAutoSync() {
     driveAutoSyncInterval = setInterval(function() { saveSettingsToDrive(); }, 300000);
 }
 function stopDriveAutoSync() { if (driveAutoSyncInterval) { clearInterval(driveAutoSyncInterval); driveAutoSyncInterval = null; } }
-function manualSaveToDrive() { saveSettingsToDrive(); setDriveSyncStatus('syncing','Syncing...'); }
+function manualSaveToDrive() { if (hasValidDriveAccess()) { saveSettingsToDrive(); setDriveSyncStatus('syncing','Syncing...'); } }
 
 /* =============================================
    STUDENT ROSTER
