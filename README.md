@@ -19,7 +19,11 @@ AI-powered grading for 5th grade math worksheets. Upload a photo of a completed 
 1. Get a free API key from [OpenRouter](https://openrouter.ai/keys)
 2. Open `index.html` in a browser
 3. Click the gear icon and paste your API key
-4. (Optional) Set up a Google OAuth Client ID for Drive sync — see [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+4. (Optional) Configure your existing Google OAuth web client for Drive sync — see [Google Cloud Console](https://console.cloud.google.com/apis/credentials). For GitHub Pages, its Authorized JavaScript origins must include `https://thepick.github.io`; for another host, add that site's exact origin. Keep your existing client ID in Settings to retain access to files created through it.
+
+Google connection uses Google Identity Services with the existing `drive.file`, profile, and email scopes. It opens a Google popup without navigating away from local work. When authorization expires, click Sign In to reconnect; the app does not automatically redirect you. Existing Drive folders, file names, and local roster/portfolio storage are retained.
+
+Run the authentication regression checks with `node --test test-google-auth.cjs`.
 
 ## Models
 
@@ -31,7 +35,7 @@ All models support vision for analyzing worksheet photos.
 
 ## Tech
 
-Vanilla HTML/CSS/JavaScript. Zero framework, zero build step. The only external dependency is Chart.js loaded from CDN for portfolio graphs.
+Vanilla HTML/CSS/JavaScript. Zero framework, zero build step. Chart.js provides portfolio graphs and Google Identity Services provides Google authorization.
 
 ## License
 
